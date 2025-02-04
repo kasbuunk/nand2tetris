@@ -9,6 +9,13 @@ tests :: [Bool]
 tests = [testNand]
 
 testNand :: Bool
-testNand = nand False False
+testNand = and [
+	nand False False,
+	nand True False,
+	nand False True,
+	not (nand True True)
+	]
 
-nand False False = True
+nand :: Bool -> Bool -> Bool
+nand True True = False
+nand _ _ = True
