@@ -49,8 +49,7 @@ not_ :: Bit -> Bit
 not_ b = nand b b
 
 and_ :: Bit -> Bit -> Bit
-and_ One One = One
-and_ _ _ = Zero
+and_ l r = not_ (nand l r)
 
 or_ :: Bit -> Bit -> Bit
 or_ l r = not_ (and_ (not_ l ) (not_ r))
