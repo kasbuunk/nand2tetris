@@ -1,9 +1,9 @@
 main :: IO ()
 main = do
 	if and tests then
-		putStrLn "Success"
+		putStr "Success"
 	else
-		putStrLn "Fail"
+		putStr "Fail"
 
 tests :: [Bool]
 tests = [testNand]
@@ -19,6 +19,15 @@ testNand = and [
 	nand One One == Zero
 	]
 
+testNot :: Bool
+testNot = and [
+	not_ One == Zero,
+	not_ Zero == One
+	]
+
 nand :: Bit -> Bit -> Bit
 nand One One = Zero
 nand _ _ = One
+
+not_ :: Bit -> Bit
+not_ b = nand b b
