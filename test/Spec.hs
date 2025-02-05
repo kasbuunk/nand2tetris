@@ -6,7 +6,11 @@ main = do
 		putStr "Fail"
 
 tests :: [Bool]
-tests = [testNand]
+tests = [testNand,
+	testNot,
+	testAnd,
+	testOr
+	]
 
 data Bit = Zero | One
 	deriving (Eq, Show)
