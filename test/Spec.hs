@@ -8,14 +8,17 @@ main = do
 tests :: [Bool]
 tests = [testNand]
 
+data Bit = Zero | One
+	deriving (Eq, Show)
+
 testNand :: Bool
 testNand = and [
-	nand False False,
-	nand True False,
-	nand False True,
-	not (nand True True)
+	nand Zero Zero == One,
+	nand Zero One == One,
+	nand One Zero == One,
+	nand One One == Zero
 	]
 
-nand :: Bool -> Bool -> Bool
-nand True True = False
-nand _ _ = True
+nand :: Bit -> Bit -> Bit
+nand One One = Zero
+nand _ _ = One
