@@ -10,7 +10,8 @@ tests = [testNand,
 	testNot,
 	testAnd,
 	testOr,
-	testXor
+	testXor,
+	testImpl
 	]
 
 testNand :: Bool
@@ -51,6 +52,15 @@ testXor = and [
 	xor Zero Zero == Zero
 	]
 
+testImpl :: Bool
+testImpl = and [
+	impl One One == One,
+	impl One Zero == Zero,
+	impl Zero One == One,
+	impl Zero Zero == One
+	]
+
+
 data Bit = Zero | One
 	deriving (Eq, Show)
 
@@ -69,3 +79,6 @@ or_ l r = not_ (and_ (not_ l ) (not_ r))
 
 xor :: Bit -> Bit -> Bit
 xor l r = or_ (and_ l (not_ r)) (and_ (not_ l) r)
+
+impl :: Bit -> Bit -> Bit
+impl l r = or_ (not_ l) r
