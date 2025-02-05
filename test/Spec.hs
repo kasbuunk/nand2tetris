@@ -33,6 +33,14 @@ testAnd = and [
 	and_ Zero Zero == Zero
 	]
 
+testOr :: Bool
+testOr = and [
+	or_ One One == One,
+	or_ One Zero == One,
+	or_ Zero One == One,
+	or_ Zero Zero == Zero
+	]
+
 nand :: Bit -> Bit -> Bit
 nand One One = Zero
 nand _ _ = One
@@ -43,3 +51,6 @@ not_ b = nand b b
 and_ :: Bit -> Bit -> Bit
 and_ One One = One
 and_ _ _ = Zero
+
+or_ :: Bit -> Bit -> Bit
+or_ l r = not_ (and_ (not_ l ) (not_ r))
