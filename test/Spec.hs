@@ -78,24 +78,26 @@ instance Eq Bit where
 	One == One = True
 	_ == _ = False
 
-nand :: Bit -> Bit -> Bit
+type Gate = Bit -> Bit -> Bit
+
+nand :: Gate
 nand One One = Zero
 nand _ _ = One
 
 not_ :: Bit -> Bit
 not_ b = nand b b
 
-and_ :: Bit -> Bit -> Bit
+and_ :: Gate
 and_ l r = not_ (nand l r)
 
-or_ :: Bit -> Bit -> Bit
+or_ :: Gate
 or_ l r = not_ (and_ (not_ l ) (not_ r))
 
-xor :: Bit -> Bit -> Bit
+xor :: Gate
 xor l r = or_ (and_ l (not_ r)) (and_ (not_ l) r)
 
-impl :: Bit -> Bit -> Bit
+impl :: Gate
 impl l r = or_ (not_ l) r
 
-eq :: Bit -> Bit -> Bit
+eq :: Gate
 eq l r = or_ (and_ l r) (and_ (not_ l) (not_ r))
