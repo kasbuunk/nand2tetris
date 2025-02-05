@@ -71,7 +71,12 @@ testEq = and [
 
 
 data Bit = Zero | One
-	deriving (Eq, Show)
+	deriving (Show)
+
+instance Eq Bit where
+	Zero == Zero = True
+	One == One = True
+	_ == _ = False
 
 nand :: Bit -> Bit -> Bit
 nand One One = Zero
