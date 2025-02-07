@@ -108,3 +108,11 @@ impl l r = or_ (not_ l) r
 
 eq :: Gate
 eq l r = or_ (and_ l r) (and_ (not_ l) (not_ r))
+
+xor' :: Gate
+xor' a b = or_ aAndNotb notaAndb
+	where
+		aAndNotb = and_ a notb
+		notaAndb = and_ nota b
+		notb = not_ b
+		nota = not_ a
