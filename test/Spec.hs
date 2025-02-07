@@ -12,7 +12,8 @@ tests = [testNand,
 	testOr,
 	testXor,
 	testImpl,
-	testEq
+	testEq,
+	testAndAssociative
 	]
 
 testNand :: Bool
@@ -69,6 +70,9 @@ testEq = and [
 	eq Zero Zero == One
 	]
 
+testAndAssociative :: Bool
+testAndAssociative = and
+	[and_ x (and_ y z) == and_ (and_ x y) z | x <- bits, y <- bits, z <- bits]
 
 data Bit = Zero | One
 	deriving (Show)
@@ -77,6 +81,9 @@ instance Eq Bit where
 	Zero == Zero = True
 	One == One = True
 	_ == _ = False
+
+bits :: [Bit]
+bits = [Zero, One]
 
 type Gate = Bit -> Bit -> Bit
 
