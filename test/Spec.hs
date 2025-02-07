@@ -71,8 +71,7 @@ testEq = and [
 	]
 
 testAndAssociative :: Bool
-testAndAssociative = and
-	[and_ x (and_ y z) == and_ (and_ x y) z | x <- bits, y <- bits, z <- bits]
+testAndAssociative = isAssociative and_ bits
 
 data Bit = Zero | One
 	deriving (Show)
@@ -116,3 +115,7 @@ xor' a b = or_ aAndNotb notaAndb
 		notaAndb = and_ nota b
 		notb = not_ b
 		nota = not_ a
+
+isAssociative :: Eq a => (a -> a -> a) -> [a] -> Bool
+isAssociative f xs = and
+	[f x (f y z) == f (f x y) z | x <- xs, y <- xs, z <- xs]
