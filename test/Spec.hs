@@ -72,10 +72,10 @@ testEq = and [
 	]
 
 testAssociative :: Bool
-testAssociative = and $ map (flip isAssociative bits) [and_, or_, zero, one]
+testAssociative = and $ map (flip isAssociative bits) [and_, or_, zero, one, eq, xor]
 
 testCommutative :: Bool
-testCommutative = and $ map (flip isCommutative bits) [and_]
+testCommutative = and $ map (flip isCommutative bits) [and_, or_, zero, one, eq, xor]
 
 data Bit = Zero | One
 	deriving (Show)
