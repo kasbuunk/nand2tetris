@@ -13,7 +13,7 @@ tests = [testNand,
 	testXor,
 	testImpl,
 	testEq,
-	testAndAssociative
+	testAssociative
 	]
 
 testNand :: Bool
@@ -70,8 +70,8 @@ testEq = and [
 	eq Zero Zero == One
 	]
 
-testAndAssociative :: Bool
-testAndAssociative = isAssociative and_ bits
+testAssociative :: Bool
+testAssociative = and $ map (flip isAssociative bits) [and_, or_, zero, one]
 
 data Bit = Zero | One
 	deriving (Show)
@@ -107,6 +107,12 @@ impl l r = or_ (not_ l) r
 
 eq :: Gate
 eq l r = or_ (and_ l r) (and_ (not_ l) (not_ r))
+
+zero :: Gate
+zero l _ = and_ l (not_ l)
+
+one :: Gate
+one l _ = or_ l (not_ l)
 
 xor' :: Gate
 xor' a b = or_ aAndNotb notaAndb
