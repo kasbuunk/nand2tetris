@@ -13,7 +13,8 @@ tests = [testNand,
 	testXor,
 	testImpl,
 	testEq,
-	testAssociative
+	testAssociative,
+	testCommutative
 	]
 
 testNand :: Bool
@@ -73,6 +74,9 @@ testEq = and [
 testAssociative :: Bool
 testAssociative = and $ map (flip isAssociative bits) [and_, or_, zero, one]
 
+testCommutative :: Bool
+testCommutative = and $ map (flip isCommutative bits) [and_]
+
 data Bit = Zero | One
 	deriving (Show)
 
@@ -124,4 +128,14 @@ xor' a b = or_ aAndNotb notaAndb
 
 isAssociative :: Eq a => (a -> a -> a) -> [a] -> Bool
 isAssociative f xs = and
-	[f x (f y z) == f (f x y) z | x <- xs, y <- xs, z <- xs]
+	[associative f x y z| x <- xs, y <- xs, z <- xs]
+
+associative :: Eq a => (a -> a -> a) -> a -> a -> a -> Bool
+associative f x y z = f (f x y) z == f x (f y z)
+
+isCommutative :: Eq a => (a -> a -> a) -> [a] -> Bool
+isCommutative f xs = and
+	[commutative f x y | x <- xs, y <- xs]
+
+commutative :: Eq a => (a -> a -> a) -> a -> a -> Bool
+commutative f x y = f x y == f y x
