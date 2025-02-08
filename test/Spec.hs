@@ -98,18 +98,18 @@ testSplitAnd = and [
 data Bit = Zero | One
 	deriving (Eq, Show)
 
+-- bits enumerates the set of values Bit can have.
+bits :: [Bit]
+bits = [Zero, One]
+
 type UnaryGate = Bit -> Bit
 
 type BinaryGate = Bit -> Bit -> Bit
 
 type Splitter = Bit -> (Bit, Bit)
 
--- bits enumerates the set of values Bit can have.
-bits :: [Bit]
-bits = [Zero, One]
-
 -- split splits the signal to two identical outgoing signals.
-split :: Bit -> (Bit, Bit)
+split :: Splitter
 split x = (x, x)
 
 nand :: BinaryGate
