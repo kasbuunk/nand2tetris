@@ -98,18 +98,15 @@ testSplitAnd = and [
 data Bit = Zero | One
 	deriving (Eq, Show)
 
-bits :: [Bit]
-bits = [Zero, One]
-
-splitAnd :: Bit -> Bit -> (Bit, Bit)
-splitAnd l r = split  (and_ l r)
-
-split :: Bit -> (Bit, Bit)
-split x = (x, x)
+type UnaryGate = Bit -> Bit
 
 type BinaryGate = Bit -> Bit -> Bit
 
-type UnaryGate = Bit -> Bit
+bits :: [Bit]
+bits = [Zero, One]
+
+split :: Bit -> (Bit, Bit)
+split x = (x, x)
 
 nand :: BinaryGate
 nand One One = Zero
@@ -163,3 +160,6 @@ isCommutative f xs = and
 
 commutative :: Eq a => (a -> a -> a) -> a -> a -> Bool
 commutative f x y = f x y == f y x
+
+splitAnd :: Bit -> Bit -> (Bit, Bit)
+splitAnd l r = split (and_ l r)
