@@ -108,11 +108,23 @@ expr2 = BGate xor
 				(UGate not_ (Literal Zero))
 				(Literal One)))
 
+expr3 :: LogicalExpr Char
+expr3 = Var 'p'
+
 testEval :: Bool
 testEval = and [
 	eval expr1 == One,
 	eval expr2 == Zero
 	]
+
+testSubstitute :: Bool
+testSubstitute = and [
+	eval (sub expr3 dict) == One
+	]
+	  where dict = (\c -> case c of
+			'p' -> One
+			_ -> undefined
+			)
 
 data Bit = Zero | One
 	deriving (Eq, Show)
@@ -131,6 +143,9 @@ eval (Literal b) = b
 eval (Var x) = undefined -- Cannot evaluate a non-substituted variable.
 eval (BGate gate l r) = gate (eval l) (eval r)
 eval (UGate gate e) = gate (eval e)
+
+sub :: LogicalExpr a -> (a -> Bit) -> LogicalExpr a
+sub (Var x) f = Literal (f x)
 
 type UnaryGate = Bit -> Bit
 
