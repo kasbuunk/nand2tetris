@@ -96,12 +96,7 @@ testSplitAnd = and [
 	]
 
 data Bit = Zero | One
-	deriving (Show)
-
-instance Eq Bit where
-	Zero == Zero = True
-	One == One = True
-	_ == _ = False
+	deriving (Eq, Show)
 
 bits :: [Bit]
 bits = [Zero, One]
