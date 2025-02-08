@@ -16,7 +16,8 @@ tests = [testNand,
 	testEq,
 	testAssociative,
 	testCommutative,
-	testSplitAnd
+	testSplitAnd,
+	testEval
 	]
 
 testNand :: Bool
@@ -95,12 +96,41 @@ testSplitAnd = and [
 	splitAnd Zero Zero == (Zero, Zero)
 	]
 
+expr1 :: LogicalExpr Char
+expr1 = Literal One
+
+expr2 :: LogicalExpr Char
+expr2 = BGate xor
+		(Literal One)
+		(BGate nand
+			(Literal Zero)
+			(BGate and_
+				(UGate not_ (Literal Zero))
+				(Literal One)))
+
+testEval :: Bool
+testEval = and [
+	eval expr1 == One,
+	eval expr2 == Zero
+	]
+
 data Bit = Zero | One
 	deriving (Eq, Show)
 
 -- bits enumerates the set of values Bit can have.
 bits :: [Bit]
 bits = [Zero, One]
+
+data LogicalExpr a = Literal Bit
+	| Var a -- Variable is used to substitute for a Bit
+	| BGate BinaryGate (LogicalExpr a) (LogicalExpr a)
+	| UGate UnaryGate (LogicalExpr a)
+
+eval :: LogicalExpr a -> Bit
+eval (Literal b) = b
+eval (Var x) = undefined -- Cannot evaluate a non-substituted variable.
+eval (BGate gate l r) = gate (eval l) (eval r)
+eval (UGate gate e) = gate (eval e)
 
 type UnaryGate = Bit -> Bit
 
@@ -112,6 +142,7 @@ type Splitter = Bit -> (Bit, Bit)
 split :: Splitter
 split x = (x, x)
 
+-- nand is the only primitive that is defined by matching on its arguments.
 nand :: BinaryGate
 nand One One = Zero
 nand _ _ = One
