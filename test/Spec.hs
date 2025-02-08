@@ -14,7 +14,8 @@ tests = [testNand,
 	testImpl,
 	testEq,
 	testAssociative,
-	testCommutative
+	testCommutative,
+	testSplitAnd
 	]
 
 testNand :: Bool
@@ -77,6 +78,14 @@ testAssociative = and $ map (flip isAssociative bits) [and_, or_, zero, one, eq,
 testCommutative :: Bool
 testCommutative = and $ map (flip isCommutative bits) [and_, or_, zero, one, eq, xor]
 
+testSplitAnd :: Bool
+testSplitAnd = and [
+	splitAnd One One == (One, One),
+	splitAnd Zero One == (Zero, Zero),
+	splitAnd One Zero == (Zero, Zero),
+	splitAnd Zero Zero == (Zero, Zero)
+	]
+
 data Bit = Zero | One
 	deriving (Show)
 
@@ -88,37 +97,45 @@ instance Eq Bit where
 bits :: [Bit]
 bits = [Zero, One]
 
-type Gate = Bit -> Bit -> Bit
+splitAnd :: Bit -> Bit -> (Bit, Bit)
+splitAnd l r = split  (and_ l r)
 
-nand :: Gate
+split :: Bit -> (Bit, Bit)
+split x = (x, x)
+
+type BinaryGate = Bit -> Bit -> Bit
+
+type UnaryGate = Bit -> Bit
+
+nand :: BinaryGate
 nand One One = Zero
 nand _ _ = One
 
-not_ :: Bit -> Bit
+not_ :: UnaryGate
 not_ b = nand b b
 
-and_ :: Gate
+and_ :: BinaryGate
 and_ l r = not_ (nand l r)
 
-or_ :: Gate
+or_ :: BinaryGate
 or_ l r = not_ (and_ (not_ l ) (not_ r))
 
-xor :: Gate
+xor :: BinaryGate
 xor l r = or_ (and_ l (not_ r)) (and_ (not_ l) r)
 
-impl :: Gate
+impl :: BinaryGate
 impl l r = or_ (not_ l) r
 
-eq :: Gate
+eq :: BinaryGate
 eq l r = or_ (and_ l r) (and_ (not_ l) (not_ r))
 
-zero :: Gate
+zero :: BinaryGate
 zero l _ = and_ l (not_ l)
 
-one :: Gate
+one :: BinaryGate
 one l _ = or_ l (not_ l)
 
-xor' :: Gate
+xor' :: BinaryGate
 xor' a b = or_ aAndNotb notaAndb
 	where
 		aAndNotb = and_ a notb
