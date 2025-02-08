@@ -17,7 +17,8 @@ tests = [testNand,
 	testAssociative,
 	testCommutative,
 	testSplitAnd,
-	testEval
+	testEval,
+	testSubstitute
 	]
 
 testNand :: Bool
@@ -119,12 +120,14 @@ testEval = and [
 
 testSubstitute :: Bool
 testSubstitute = and [
-	eval (sub expr3 dict) == One
+	eval (sub expr3 dict) == One,
+	eval (sub' expr3 dict') == Zero
 	]
 	  where dict = (\c -> case c of
 			'p' -> One
 			_ -> undefined
 			)
+		dict' = [('p', Zero)]
 
 data Bit = Zero | One
 	deriving (Eq, Show)
@@ -146,6 +149,9 @@ eval (UGate gate e) = gate (eval e)
 
 sub :: LogicalExpr a -> (a -> Bit) -> LogicalExpr a
 sub (Var x) f = Literal (f x)
+
+sub' :: Eq a => LogicalExpr a -> [(a, Bit)] -> LogicalExpr a
+sub' (Var x) vs = Literal (head [bit | (var, bit) <- vs, var == x])
 
 type UnaryGate = Bit -> Bit
 
