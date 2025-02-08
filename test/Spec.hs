@@ -11,6 +11,7 @@ tests = [testNand,
 	testAnd,
 	testOr,
 	testXor,
+	testNor,
 	testImpl,
 	testEq,
 	testAssociative,
@@ -54,6 +55,14 @@ testXor = and [
 	xor One Zero == One,
 	xor Zero One == One,
 	xor Zero Zero == Zero
+	]
+
+testNor :: Bool
+testNor = and [
+	nor One One == Zero,
+	nor One Zero == Zero,
+	nor Zero One == Zero,
+	nor Zero Zero == One
 	]
 
 testImpl :: Bool
@@ -122,6 +131,9 @@ or_ l r = not_ (and_ (not_ l ) (not_ r))
 
 xor :: BinaryGate
 xor l r = or_ (and_ l (not_ r)) (and_ (not_ l) r)
+
+nor :: BinaryGate
+nor l r = and_ (not_ l) (not_ r)
 
 impl :: BinaryGate
 impl l r = or_ (not_ l) r
