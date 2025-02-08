@@ -102,9 +102,13 @@ type UnaryGate = Bit -> Bit
 
 type BinaryGate = Bit -> Bit -> Bit
 
+type Splitter = Bit -> (Bit, Bit)
+
+-- bits enumerates the set of values Bit can have.
 bits :: [Bit]
 bits = [Zero, One]
 
+-- split splits the signal to two identical outgoing signals.
 split :: Bit -> (Bit, Bit)
 split x = (x, x)
 
@@ -162,4 +166,7 @@ commutative :: Eq a => (a -> a -> a) -> a -> a -> Bool
 commutative f x y = f x y == f y x
 
 splitAnd :: Bit -> Bit -> (Bit, Bit)
-splitAnd l r = split (and_ l r)
+splitAnd l r = composeBGateSplitter and_ split l r
+
+composeBGateSplitter :: BinaryGate -> Splitter -> (Bit -> Bit -> (Bit, Bit))
+composeBGateSplitter bg s l r = s (bg l r)
