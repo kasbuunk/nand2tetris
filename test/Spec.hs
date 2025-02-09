@@ -21,7 +21,10 @@ tests = [testNand,
 	testSubstitute,
 	testDistributive,
 	testDeMorgan,
-	testAdd16
+	testAdd16,
+	testAdd,
+	testAddCarry,
+	testAddWithCarry
 	]
 
 testNand :: Bool
@@ -153,8 +156,46 @@ testSubstitute = and [
 testAdd16 :: Bool
 testAdd16 = and [
 	addBus (take l (repeat One)) (take l (repeat Zero)) == take l (repeat One)
+	, addBus [Zero] [Zero] == [Zero]
+	, addBus [One] [Zero] == [One]
+	, addBus [Zero] [One] == [One]
+	, addBus [One] [One] == [Zero]
+	, addBus [Zero, One] [Zero, One] == [One, Zero]
+	, addBus [Zero, Zero, One] [Zero, Zero, One] == [Zero, One, Zero]
+	, addBus [Zero, One, One] [Zero, One, One] == [One, One, Zero]
+	, addBus [One, One, Zero] [Zero, One, One] == [Zero, Zero, One] -- Overflows.
 	]
 	where l = 16
+
+testAdd :: Bool
+testAdd = and [
+	add Zero Zero == (Zero, Zero),
+	add Zero One == (One, Zero),
+	add One Zero == (One, Zero),
+	add One One == (Zero, One)
+	]
+
+testAddWithCarry :: Bool
+testAddWithCarry = and [
+	addWithCarry Zero Zero Zero == (Zero, Zero),
+	addWithCarry Zero Zero One == (One, Zero),
+	addWithCarry Zero One Zero == (One, Zero),
+	addWithCarry Zero One One == (Zero, One),
+	addWithCarry One Zero Zero == (One, Zero),
+	addWithCarry One Zero One == (Zero, One),
+	addWithCarry One One Zero == (Zero, One),
+	addWithCarry One One One == (One, One)
+	]
+
+testAddCarry :: Bool
+testAddCarry = and [
+	addCarry (Zero, Zero) ([], Zero)== ([Zero], Zero),
+	addCarry (One, Zero) ([], Zero) == ([One], Zero),
+	addCarry (Zero, One) ([], Zero) == ([One], Zero),
+	addCarry (Zero, One) ([Zero, One], Zero) == ([One, Zero, One], Zero),
+	addCarry (Zero, One) ([], One) == ([Zero], One),
+	addCarry (One, One) ([], One) == ([One], One)
+	]
 
 data Bit = Zero | One
 	deriving (Eq, Show)
@@ -274,5 +315,27 @@ splitAnd l r = composeBGateSplitter and_ split l r
 composeBGateSplitter :: BinaryGate -> Splitter -> (Bit -> Bit -> (Bit, Bit))
 composeBGateSplitter bg s l r = s (bg l r)
 
+-- add adds two Bits and returns the result and a carry Bit.
+add :: Bit -> Bit -> (Bit, Bit)
+add = addWithCarry Zero
+
+-- addWithCarry adds three Bits (two from input and a third from the previous 
+-- carry) and returns the result and a carry Bit.
+addWithCarry :: Bit -> Bit -> Bit -> (Bit, Bit)
+addWithCarry x y z = (thisDigit, carry)
+	where
+		thisDigit = and_ x (nor y z) `or_` and_ y (nor x z) `or_` and_ z (nor x y) `or_` (and_ x (and_ y z))
+		carry = or_ (or_ (and_ x y) (and_ x z)) (and_ y z)
+
 addBus :: [Bit] -> [Bit] -> [Bit]
-addBus xs ys = [xor x y | (x, y) <- zip xs ys]
+addBus xs ys = (fst zs)
+	where
+		xs' = xs
+		ys' = ys
+		zs = foldr addCarry acc (zip xs' ys')
+		acc = ([], Zero)
+
+addCarry :: (Bit, Bit) -> ([Bit], Bit) -> ([Bit], Bit)
+addCarry (x, y) (list, prevCarry) = (s:list, newCarry)
+	where
+		(s, newCarry) = addWithCarry x y prevCarry
