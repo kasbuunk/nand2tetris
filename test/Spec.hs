@@ -20,7 +20,8 @@ tests = [testNand,
 	testEval,
 	testSubstitute,
 	testDistributive,
-	testDeMorgan
+	testDeMorgan,
+	testAdd16
 	]
 
 testNand :: Bool
@@ -149,6 +150,12 @@ testSubstitute = and [
 			)
 		dict' = [('p', Zero)]
 
+testAdd16 :: Bool
+testAdd16 = and [
+	addBus (take l (repeat One)) (take l (repeat Zero)) == take l (repeat One)
+	]
+	where l = 16
+
 data Bit = Zero | One
 	deriving (Eq, Show)
 
@@ -157,7 +164,7 @@ bits :: [Bit]
 bits = [Zero, One]
 
 data LogicalExpr a = Literal Bit
-	| Var a -- Variable is used to substitute for a Bit
+	| Var a -- Variable is used to substitute for a Bit.
 	| BGate BinaryGate (LogicalExpr a) (LogicalExpr a)
 	| UGate UnaryGate (LogicalExpr a)
 
@@ -223,6 +230,8 @@ zero l _ = and_ l (not_ l)
 one :: BinaryGate
 one l _ = or_ l (not_ l)
 
+-- xor' is an equivalent implementation of xor, with named functions for the
+-- edges that symbolise connections, similar to notation in HDL.
 xor' :: BinaryGate
 xor' a b = or_ aAndNotb notaAndb
 	where
@@ -264,3 +273,6 @@ splitAnd l r = composeBGateSplitter and_ split l r
 
 composeBGateSplitter :: BinaryGate -> Splitter -> (Bit -> Bit -> (Bit, Bit))
 composeBGateSplitter bg s l r = s (bg l r)
+
+addBus :: [Bit] -> [Bit] -> [Bit]
+addBus xs ys = [xor x y | (x, y) <- zip xs ys]
