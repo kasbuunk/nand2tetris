@@ -19,7 +19,8 @@ tests = [testNand,
 	testSplitAnd,
 	testEval,
 	testSubstitute,
-	testDistributive
+	testDistributive,
+	testDeMorgan
 	]
 
 testNand :: Bool
@@ -97,6 +98,12 @@ testDistributive :: Bool
 testDistributive = and [
 	isDistributive bits and_ or_,
 	isDistributive bits or_ and_
+	]
+
+testDeMorgan :: Bool
+testDeMorgan = and [
+	isDeMorgan bits not_ or_ and_,
+	isDeMorgan bits not_ and_ or_
 	]
 
 testSplitAnd :: Bool
@@ -244,6 +251,13 @@ isDistributive xs f g = and
 
 distributive :: Eq a => (a -> a -> a) -> (a -> a -> a) -> a -> a -> a -> Bool
 distributive f g x y z = f x (g y z) == g (f x y) (f x z)
+
+isDeMorgan :: Eq a => [a] -> (a -> a) -> (a -> a -> a) -> (a -> a -> a) -> Bool
+isDeMorgan xs u f g = and
+	[deMorgan u f g x y | x <- xs, y <- xs]
+
+deMorgan :: Eq a => (a -> a) -> (a -> a -> a) -> (a -> a -> a) -> a -> a -> Bool
+deMorgan u f g x y = u (f x y) == g (u x) (u y)
 
 splitAnd :: Bit -> Bit -> (Bit, Bit)
 splitAnd l r = composeBGateSplitter and_ split l r
