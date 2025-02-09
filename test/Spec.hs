@@ -121,7 +121,10 @@ testEval = and [
 testSubstitute :: Bool
 testSubstitute = and [
 	eval (sub expr3 dict) == One,
-	eval (sub' expr3 dict') == Zero
+	eval (sub' expr3 dict') == Zero,
+	eval (sub' (BGate xor (Literal One) (Var 'p')) dict') == One,
+	eval (sub' (BGate xor (Literal Zero) (Var 'p')) dict') == Zero,
+	eval (sub' (BGate nand (UGate not_ (Literal Zero)) (Var 'p')) dict') == One
 	]
 	  where dict = (\c -> case c of
 			'p' -> One
@@ -147,11 +150,19 @@ eval (Var x) = undefined -- Cannot evaluate a non-substituted variable.
 eval (BGate gate l r) = gate (eval l) (eval r)
 eval (UGate gate e) = gate (eval e)
 
+-- sub substitutes the variables in a LogicalExpr with a mapping function.
 sub :: LogicalExpr a -> (a -> Bit) -> LogicalExpr a
 sub (Var x) f = Literal (f x)
 
+-- sub' substitutes the variables in a LogicalExpr with a list of pairs.
 sub' :: Eq a => LogicalExpr a -> [(a, Bit)] -> LogicalExpr a
-sub' (Var x) vs = Literal (head [bit | (var, bit) <- vs, var == x])
+sub' (Literal b) _ = Literal b
+sub' (Var x) vs = if null thing
+			then Var x
+			else Literal (head thing)
+	where thing = [bit | (var, bit) <- vs, var == x]
+sub' (UGate g e) vs = UGate g (sub' e vs)
+sub' (BGate g l r) vs = BGate g (sub' l vs) (sub' r vs)
 
 type UnaryGate = Bit -> Bit
 
