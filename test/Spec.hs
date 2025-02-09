@@ -21,7 +21,7 @@ tests = [testNand,
 	testSubstitute,
 	testDistributive,
 	testDeMorgan,
-	testAdd16,
+	testAddBuses,
 	testAdd,
 	testAddCarry,
 	testAddWithCarry
@@ -153,17 +153,17 @@ testSubstitute = and [
 			)
 		dict' = [('p', Zero)]
 
-testAdd16 :: Bool
-testAdd16 = and [
-	addBus (take l (repeat One)) (take l (repeat Zero)) == take l (repeat One)
-	, addBus [Zero] [Zero] == [Zero]
-	, addBus [One] [Zero] == [One]
-	, addBus [Zero] [One] == [One]
-	, addBus [One] [One] == [Zero]
-	, addBus [Zero, One] [Zero, One] == [One, Zero]
-	, addBus [Zero, Zero, One] [Zero, Zero, One] == [Zero, One, Zero]
-	, addBus [Zero, One, One] [Zero, One, One] == [One, One, Zero]
-	, addBus [One, One, Zero] [Zero, One, One] == [Zero, Zero, One] -- Overflows.
+testAddBuses :: Bool
+testAddBuses = and [
+	addBus (take l (repeat One)) (take l (repeat Zero)) == (take l (repeat One), Zero)
+	, addBus [Zero] [Zero] == ([Zero], Zero)
+	, addBus [One] [Zero] == ([One], Zero)
+	, addBus [Zero] [One] == ([One], Zero)
+	, addBus [One] [One] == ([Zero], One) -- Overflows.
+	, addBus [Zero, One] [Zero, One] == ([One, Zero], Zero)
+	, addBus [Zero, Zero, One] [Zero, Zero, One] == ([Zero, One, Zero], Zero)
+	, addBus [Zero, One, One] [Zero, One, One] == ([One, One, Zero], Zero)
+	, addBus [One, One, Zero] [Zero, One, One] == ([Zero, Zero, One], One) -- Overflows.
 	]
 	where l = 16
 
@@ -327,8 +327,9 @@ addWithCarry x y z = (thisDigit, carry)
 		thisDigit = and_ x (nor y z) `or_` and_ y (nor x z) `or_` and_ z (nor x y) `or_` (and_ x (and_ y z))
 		carry = or_ (or_ (and_ x y) (and_ x z)) (and_ y z)
 
-addBus :: [Bit] -> [Bit] -> [Bit]
-addBus xs ys = (fst zs)
+-- addBus adds two buses of Bits and returns a Bit signaling overflow.
+addBus :: [Bit] -> [Bit] -> ([Bit], Bit)
+addBus xs ys = zs
 	where
 		xs' = xs
 		ys' = ys
