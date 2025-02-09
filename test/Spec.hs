@@ -86,11 +86,11 @@ testEq = and [
 
 -- testAssociative semantically proves the associative property of binary operators.
 testAssociative :: Bool
-testAssociative = and $ map (flip isAssociative bits) [and_, or_, zero, one, eq, xor]
+testAssociative = and $ map (isAssociative bits) [and_, or_, zero, one, eq, xor]
 
 -- testCommutative semantically proves the commutative property of binary operators.
 testCommutative :: Bool
-testCommutative = and $ map (flip isCommutative bits) [and_, or_, zero, one, eq, xor]
+testCommutative = and $ map (isCommutative bits) [and_, or_, zero, one, eq, xor]
 
 -- testDistributive semantically proves the distributive property of pairs of binary operators.
 testDistributive :: Bool
@@ -224,15 +224,15 @@ xor' a b = or_ aAndNotb notaAndb
 		notb = not_ b
 		nota = not_ a
 
-isAssociative :: Eq a => (a -> a -> a) -> [a] -> Bool
-isAssociative f xs = and
+isAssociative :: Eq a => [a] -> (a -> a -> a) -> Bool
+isAssociative xs f = and
 	[associative f x y z| x <- xs, y <- xs, z <- xs]
 
 associative :: Eq a => (a -> a -> a) -> a -> a -> a -> Bool
 associative f x y z = f (f x y) z == f x (f y z)
 
-isCommutative :: Eq a => (a -> a -> a) -> [a] -> Bool
-isCommutative f xs = and
+isCommutative :: Eq a => [a] -> (a -> a -> a) -> Bool
+isCommutative xs f = and
 	[commutative f x y | x <- xs, y <- xs]
 
 commutative :: Eq a => (a -> a -> a) -> a -> a -> Bool
