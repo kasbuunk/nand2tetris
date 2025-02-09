@@ -18,7 +18,8 @@ tests = [testNand,
 	testCommutative,
 	testSplitAnd,
 	testEval,
-	testSubstitute
+	testSubstitute,
+	testDistributive
 	]
 
 testNand :: Bool
@@ -83,11 +84,20 @@ testEq = and [
 	eq Zero Zero == One
 	]
 
+-- testAssociative semantically proves the associative property of binary operators.
 testAssociative :: Bool
 testAssociative = and $ map (flip isAssociative bits) [and_, or_, zero, one, eq, xor]
 
+-- testCommutative semantically proves the commutative property of binary operators.
 testCommutative :: Bool
 testCommutative = and $ map (flip isCommutative bits) [and_, or_, zero, one, eq, xor]
+
+-- testDistributive semantically proves the distributive property of pairs of binary operators.
+testDistributive :: Bool
+testDistributive = and [
+	isDistributive bits and_ or_,
+	isDistributive bits or_ and_
+	]
 
 testSplitAnd :: Bool
 testSplitAnd = and [
@@ -227,6 +237,13 @@ isCommutative f xs = and
 
 commutative :: Eq a => (a -> a -> a) -> a -> a -> Bool
 commutative f x y = f x y == f y x
+
+isDistributive :: Eq a => [a] -> (a -> a -> a) -> (a -> a -> a) -> Bool
+isDistributive xs f g = and
+	[distributive f g x y z | x <- xs, y <- xs, z <- xs]
+
+distributive :: Eq a => (a -> a -> a) -> (a -> a -> a) -> a -> a -> a -> Bool
+distributive f g x y z = f x (g y z) == g (f x y) (f x z)
 
 splitAnd :: Bit -> Bit -> (Bit, Bit)
 splitAnd l r = composeBGateSplitter and_ split l r
