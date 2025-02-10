@@ -27,6 +27,7 @@ tests = [testNand
 	, testAddWithCarry
 	, testMux
 	, testDemux
+	, testMuxDemux
 	]
 
 testNand :: Bool
@@ -211,6 +212,18 @@ testDemux = and [
 	, demux Zero One == (Zero, Zero)
 	, demux One Zero == (One, Zero)
 	, demux One One == (Zero, One)
+	]
+
+testMuxDemux :: Bool
+testMuxDemux = and [
+	uncurry mux (demux Zero Zero) Zero == Zero
+	, uncurry mux (demux One Zero) Zero == One
+	, uncurry mux (demux One One) Zero == Zero
+	, uncurry mux (demux Zero One) Zero == Zero
+	, uncurry mux (demux Zero Zero) One == Zero
+	, uncurry mux (demux One Zero) One == Zero
+	, uncurry mux (demux One One) One == One
+	, uncurry mux (demux Zero One) One == Zero
 	]
 
 data Bit = Zero | One
