@@ -31,6 +31,7 @@ tests = [testNand
 	, testAndBus
 	, testAnd16
 	, testNotBus
+	, testNot16
 	]
 
 testNand :: Bool
@@ -256,12 +257,26 @@ testNotBus = and [
 	, notBus [Zero, Zero, One, Zero] == [One, One, Zero, One]
 	]
 
+testNot16 :: Bool
+testNot16 = and [
+	not16 [Zero, One, One, Zero, Zero, One, Zero, Zero, One, One, One, One, Zero, One, One, Zero]
+		== [One, Zero, Zero, One, One, Zero, One, One, Zero, Zero, Zero, Zero, One, Zero, Zero, One]
+	, not16 (take 16 ones) == (take 16 zeroes)
+	, not16 (take 16 zeroes) == (take 16 ones)
+	]
+
 data Bit = Zero | One
 	deriving (Eq, Show)
 
 -- bits enumerates the set of values Bit can have.
 bits :: [Bit]
 bits = [Zero, One]
+
+ones :: [Bit]
+ones = One : ones
+
+zeroes :: [Bit]
+zeroes = Zero : zeroes
 
 data LogicalExpr a = Literal Bit
 	| Var a -- Variable is used to substitute for a Bit.
@@ -345,6 +360,10 @@ and16 xs ys | length xs == 16 && length ys == 16 = andBus xs ys
 
 notBus :: [Bit] -> [Bit]
 notBus = map not_
+
+not16 :: [Bit] -> [Bit]
+not16 xs | length xs == 16 = notBus xs
+	    | otherwise = undefined
 
 -- xor' is an equivalent implementation of xor, with named functions for the
 -- edges that symbolise connections, similar to notation in HDL.
