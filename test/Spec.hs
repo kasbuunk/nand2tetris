@@ -324,7 +324,7 @@ add = addWithCarry Zero
 addWithCarry :: Bit -> Bit -> Bit -> (Bit, Bit)
 addWithCarry x y z = (thisDigit, carry)
 	where
-		thisDigit = and_ x (nor y z) `or_` and_ y (nor x z) `or_` and_ z (nor x y) `or_` (and_ x (and_ y z))
+		thisDigit = xor x (xor y z)
 		carry = or_ (or_ (and_ x y) (and_ x z)) (and_ y z)
 
 -- addBus adds two buses of Bits and returns a Bit signaling overflow.
