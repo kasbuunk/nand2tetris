@@ -32,6 +32,8 @@ tests = [testNand
 	, testAnd16
 	, testNotBus
 	, testNot16
+	, testOrBus
+	, testOr16
 	]
 
 testNand :: Bool
@@ -265,6 +267,23 @@ testNot16 = and [
 	, not16 (take 16 zeroes) == (take 16 ones)
 	]
 
+testOrBus :: Bool
+testOrBus = and [
+	orBus [Zero] [Zero] == [Zero]
+	, orBus [One] [Zero] == [One]
+	, orBus [Zero, Zero, One, One] [One, Zero, One, Zero] == [One, Zero, One, One]
+	]
+
+testOr16 :: Bool
+testOr16 = and [
+	or16 [Zero, One, One, Zero, Zero, One, Zero, Zero, One, One, One, One, Zero, One, One, Zero]
+		[Zero, One, One, Zero, Zero, One, Zero, Zero, One, One, One, One, Zero, One, One, Zero]
+		== [Zero, One, One, Zero, Zero, One, Zero, Zero, One, One, One, One, Zero, One, One, Zero]
+	, or16 [Zero, One, One, Zero, Zero, One, Zero, Zero, One, One, One, One, Zero, One, One, Zero]
+		[Zero, Zero, One, One, Zero, Zero, Zero, Zero, One, One, One, One, Zero, One, One, Zero]
+		== [Zero, One, One, One, Zero, One, Zero, Zero, One, One, One, One, Zero, One, One, Zero]
+	]
+
 data Bit = Zero | One
 	deriving (Eq, Show)
 
@@ -350,6 +369,13 @@ mux x y sel = if sel == Zero then x else y
 
 demux :: Bit -> Bit -> (Bit, Bit)
 demux x sel = if sel == Zero then (x, Zero) else (Zero, x)
+
+orBus :: [Bit] -> [Bit] -> [Bit]
+orBus xs ys = [or_ x y | (x, y) <- zip xs ys]
+
+or16 :: [Bit] -> [Bit] -> [Bit]
+or16 xs ys | length xs == 16 && length ys == 16 = orBus xs ys
+	    | otherwise = undefined
 
 andBus :: [Bit] -> [Bit] -> [Bit]
 andBus xs ys = [and_ x y | (x, y) <- zip xs ys]
