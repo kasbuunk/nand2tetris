@@ -28,6 +28,8 @@ tests = [testNand
 	, testMux
 	, testDemux
 	, testMuxDemux
+	, testAndBus
+	, testAnd16
 	]
 
 testNand :: Bool
@@ -226,6 +228,25 @@ testMuxDemux = and [
 	, uncurry mux (demux Zero One) One == Zero
 	]
 
+testAndBus :: Bool
+testAndBus = and [
+	andBus [Zero] [Zero] == [Zero]
+	, andBus [One] [Zero] == [Zero]
+	, andBus [One] [One] == [One]
+	, andBus [Zero, One, Zero] [One, One, One] == [Zero, One, Zero]
+	, andBus [Zero, Zero, One, Zero] [Zero, One, One, One] == [Zero, Zero, One, Zero]
+	]
+
+testAnd16 :: Bool
+testAnd16 = and [
+	and16 [Zero, One, One, Zero, Zero, One, Zero, Zero, One, One, One, One, Zero, One, One, Zero]
+		[Zero, One, One, Zero, Zero, One, Zero, Zero, One, One, One, One, Zero, One, One, Zero]
+		== [Zero, One, One, Zero, Zero, One, Zero, Zero, One, One, One, One, Zero, One, One, Zero]
+	, and16 [Zero, One, One, Zero, Zero, One, Zero, Zero, One, One, One, One, Zero, One, One, Zero]
+		[Zero, Zero, One, One, Zero, Zero, Zero, Zero, One, One, One, One, Zero, One, One, Zero]
+		== [Zero, Zero, One, Zero, Zero, Zero, Zero, Zero, One, One, One, One, Zero, One, One, Zero]
+	]
+
 data Bit = Zero | One
 	deriving (Eq, Show)
 
@@ -305,6 +326,13 @@ mux x y sel = if sel == Zero then x else y
 
 demux :: Bit -> Bit -> (Bit, Bit)
 demux x sel = if sel == Zero then (x, Zero) else (Zero, x)
+
+andBus :: [Bit] -> [Bit] -> [Bit]
+andBus xs ys = [and_ x y | (x, y) <- zip xs ys]
+
+and16 :: [Bit] -> [Bit] -> [Bit]
+and16 xs ys | length xs == 16 && length ys == 16 = andBus xs ys
+	    | otherwise = undefined
 
 -- xor' is an equivalent implementation of xor, with named functions for the
 -- edges that symbolise connections, similar to notation in HDL.
