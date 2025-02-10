@@ -30,6 +30,7 @@ tests = [testNand
 	, testMuxDemux
 	, testAndBus
 	, testAnd16
+	, testNotBus
 	]
 
 testNand :: Bool
@@ -247,6 +248,14 @@ testAnd16 = and [
 		== [Zero, Zero, One, Zero, Zero, Zero, Zero, Zero, One, One, One, One, Zero, One, One, Zero]
 	]
 
+testNotBus :: Bool
+testNotBus = and [
+	notBus [Zero] == [One]
+	, notBus [One] == [Zero]
+	, notBus [One, Zero] == [Zero, One]
+	, notBus [Zero, Zero, One, Zero] == [One, One, Zero, One]
+	]
+
 data Bit = Zero | One
 	deriving (Eq, Show)
 
@@ -333,6 +342,9 @@ andBus xs ys = [and_ x y | (x, y) <- zip xs ys]
 and16 :: [Bit] -> [Bit] -> [Bit]
 and16 xs ys | length xs == 16 && length ys == 16 = andBus xs ys
 	    | otherwise = undefined
+
+notBus :: [Bit] -> [Bit]
+notBus = map not_
 
 -- xor' is an equivalent implementation of xor, with named functions for the
 -- edges that symbolise connections, similar to notation in HDL.
