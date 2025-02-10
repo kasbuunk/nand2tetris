@@ -6,25 +6,26 @@ main = do
 		putStr "Fail"
 
 tests :: [Bool]
-tests = [testNand,
-	testNot,
-	testAnd,
-	testOr,
-	testXor,
-	testNor,
-	testImpl,
-	testEq,
-	testAssociative,
-	testCommutative,
-	testSplitAnd,
-	testEval,
-	testSubstitute,
-	testDistributive,
-	testDeMorgan,
-	testAddBuses,
-	testAdd,
-	testAddCarry,
-	testAddWithCarry
+tests = [testNand
+	, testNot
+	, testAnd
+	, testOr
+	, testXor
+	, testNor
+	, testImpl
+	, testEq
+	, testAssociative
+	, testCommutative
+	, testSplitAnd
+	, testEval
+	, testSubstitute
+	, testDistributive
+	, testDeMorgan
+	, testAddBuses
+	, testAdd
+	, testAddCarry
+	, testAddWithCarry
+	, testMux
 	]
 
 testNand :: Bool
@@ -197,6 +198,12 @@ testAddCarry = and [
 	addCarry (One, One) ([], One) == ([One], One)
 	]
 
+testMux :: Bool
+testMux = and [
+	mux Zero One Zero == Zero
+	, mux Zero One One == One
+	]
+
 data Bit = Zero | One
 	deriving (Eq, Show)
 
@@ -270,6 +277,9 @@ zero l _ = and_ l (not_ l)
 
 one :: BinaryGate
 one l _ = or_ l (not_ l)
+
+mux :: Bit -> Bit -> Bit -> Bit
+mux x y sel = if sel == Zero then x else y
 
 -- xor' is an equivalent implementation of xor, with named functions for the
 -- edges that symbolise connections, similar to notation in HDL.
