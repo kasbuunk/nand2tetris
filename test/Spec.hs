@@ -26,6 +26,7 @@ tests = [testNand
 	, testAddCarry
 	, testAddWithCarry
 	, testMux
+	, testDemux
 	]
 
 testNand :: Bool
@@ -204,6 +205,14 @@ testMux = and [
 	, mux Zero One One == One
 	]
 
+testDemux :: Bool
+testDemux = and [
+	demux Zero Zero == (Zero, Zero)
+	, demux Zero One == (Zero, Zero)
+	, demux One Zero == (One, Zero)
+	, demux One One == (Zero, One)
+	]
+
 data Bit = Zero | One
 	deriving (Eq, Show)
 
@@ -280,6 +289,9 @@ one l _ = or_ l (not_ l)
 
 mux :: Bit -> Bit -> Bit -> Bit
 mux x y sel = if sel == Zero then x else y
+
+demux :: Bit -> Bit -> (Bit, Bit)
+demux x sel = if sel == Zero then (x, Zero) else (Zero, x)
 
 -- xor' is an equivalent implementation of xor, with named functions for the
 -- edges that symbolise connections, similar to notation in HDL.
