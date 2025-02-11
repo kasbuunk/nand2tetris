@@ -368,7 +368,7 @@ mux :: Bit -> Bit -> Bit -> Bit
 mux x y sel = or_ (and_ x (not_ sel)) (and_ y sel)
 
 demux :: Bit -> Bit -> (Bit, Bit)
-demux x sel = if sel == Zero then (x, Zero) else (Zero, x)
+demux x sel = (and_ x (not_ sel), and_ x sel)
 
 orBus :: [Bit] -> [Bit] -> [Bit]
 orBus xs ys = [or_ x y | (x, y) <- zip xs ys]
