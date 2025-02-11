@@ -34,6 +34,7 @@ tests = [testNand
 	, testNot16
 	, testOrBus
 	, testOr16
+	, testMux16
 	]
 
 testNand :: Bool
@@ -284,6 +285,21 @@ testOr16 = and [
 		== [Zero, One, One, One, Zero, One, Zero, Zero, One, One, One, One, Zero, One, One, Zero]
 	]
 
+testMux16 = and [
+	mux16 zero16 zero16 Zero == zero16
+	, mux16 zero16 zero16 One == zero16
+	, mux16 zero16 arbitraryString1 Zero == zero16
+	, mux16 zero16 arbitraryString1 One == arbitraryString1
+	, mux16 arbitraryString1 zero16 Zero == arbitraryString1
+	, mux16 arbitraryString1 zero16 One == zero16
+	, mux16 arbitraryString1 arbitraryString2 Zero == arbitraryString1
+	, mux16 arbitraryString1 arbitraryString2 One == arbitraryString2
+	]
+	where
+		zero16 = take 16 zeroes
+		arbitraryString1 = [Zero, Zero, Zero, One, Zero, Zero, One, Zero, Zero, Zero, One, One, Zero, Zero, Zero, One]
+		arbitraryString2 = [One, Zero, One, Zero, Zero, One, One, Zero, One, One, One, One, One, Zero, Zero, One]
+
 data Bit = Zero | One
 	deriving (Eq, Show)
 
@@ -389,6 +405,13 @@ notBus = map not_
 
 not16 :: [Bit] -> [Bit]
 not16 xs | length xs == 16 = notBus xs
+	    | otherwise = undefined
+
+muxBus :: [Bit] -> [Bit] -> Bit -> [Bit]
+muxBus xs ys sel = [mux x y sel | (x, y) <- zip xs ys]
+
+mux16 :: [Bit] -> [Bit] -> Bit -> [Bit]
+mux16 xs ys sel | length xs == 16 = muxBus xs ys sel
 	    | otherwise = undefined
 
 -- xor' is an equivalent implementation of xor, with named functions for the
