@@ -35,6 +35,7 @@ tests = [testNand
 	, testOrBus
 	, testOr16
 	, testMux16
+	, testOr8Way
 	]
 
 testNand :: Bool
@@ -285,20 +286,37 @@ testOr16 = and [
 		== [Zero, One, One, One, Zero, One, Zero, Zero, One, One, One, One, Zero, One, One, Zero]
 	]
 
+testMux16 :: Bool
 testMux16 = and [
 	mux16 zero16 zero16 Zero == zero16
 	, mux16 zero16 zero16 One == zero16
-	, mux16 zero16 arbitraryString1 Zero == zero16
-	, mux16 zero16 arbitraryString1 One == arbitraryString1
-	, mux16 arbitraryString1 zero16 Zero == arbitraryString1
-	, mux16 arbitraryString1 zero16 One == zero16
-	, mux16 arbitraryString1 arbitraryString2 Zero == arbitraryString1
-	, mux16 arbitraryString1 arbitraryString2 One == arbitraryString2
+	, mux16 zero16 arbitraryString16 Zero == zero16
+	, mux16 zero16 arbitraryString16 One == arbitraryString16
+	, mux16 arbitraryString16 zero16 Zero == arbitraryString16
+	, mux16 arbitraryString16 zero16 One == zero16
+	, mux16 arbitraryString16 arbitraryString16' Zero == arbitraryString16
+	, mux16 arbitraryString16 arbitraryString16' One == arbitraryString16'
 	]
 	where
-		zero16 = take 16 zeroes
-		arbitraryString1 = [Zero, Zero, Zero, One, Zero, Zero, One, Zero, Zero, Zero, One, One, Zero, Zero, Zero, One]
-		arbitraryString2 = [One, Zero, One, Zero, Zero, One, One, Zero, One, One, One, One, One, Zero, Zero, One]
+
+testOr8Way :: Bool
+testOr8Way = and [
+	or8Way zero8 == Zero
+	, or8Way one8 == One
+	, or8Way arbitraryString8 == One
+	, or8Way arbitraryString8' == One
+	]
+		
+
+zero16 = take 16 zeroes
+one16 = take 16 ones
+arbitraryString16 = [Zero, Zero, Zero, One, Zero, Zero, One, Zero, Zero, Zero, One, One, Zero, Zero, Zero, One]
+arbitraryString16' = [One, Zero, One, Zero, Zero, One, One, Zero, One, One, One, One, One, Zero, Zero, One]
+
+zero8 = take 8 zeroes
+one8 = take 8 ones
+arbitraryString8 = take 8 arbitraryString16
+arbitraryString8' = take 8 arbitraryString16'
 
 data Bit = Zero | One
 	deriving (Eq, Show)
@@ -405,14 +423,21 @@ notBus = map not_
 
 not16 :: [Bit] -> [Bit]
 not16 xs | length xs == 16 = notBus xs
-	    | otherwise = undefined
+	 | otherwise = undefined
 
 muxBus :: [Bit] -> [Bit] -> Bit -> [Bit]
 muxBus xs ys sel = [mux x y sel | (x, y) <- zip xs ys]
 
 mux16 :: [Bit] -> [Bit] -> Bit -> [Bit]
 mux16 xs ys sel | length xs == 16 = muxBus xs ys sel
-	    | otherwise = undefined
+	        | otherwise = undefined
+
+orFold :: [Bit] -> Bit
+orFold = foldl or_ Zero
+
+or8Way :: [Bit] -> Bit
+or8Way xs | length xs == 8 = orFold xs
+	  | otherwise = undefined
 
 -- xor' is an equivalent implementation of xor, with named functions for the
 -- edges that symbolise connections, similar to notation in HDL.
