@@ -344,7 +344,7 @@ and_ :: BinaryGate
 and_ l r = not_ (nand l r)
 
 or_ :: BinaryGate
-or_ l r = not_ (and_ (not_ l ) (not_ r))
+or_ l r = nand (not_ l) (not_ r)
 
 xor :: BinaryGate
 xor l r = or_ (and_ l (not_ r)) (and_ (not_ l) r)
@@ -449,12 +449,7 @@ addWithCarry x y z = (thisDigit, carry)
 
 -- addBus adds two buses of Bits and returns a Bit signaling overflow.
 addBus :: [Bit] -> [Bit] -> ([Bit], Bit)
-addBus xs ys = zs
-	where
-		xs' = xs
-		ys' = ys
-		zs = foldr addCarry acc (zip xs' ys')
-		acc = ([], Zero)
+addBus xs ys = foldr addCarry ([], Zero) (zip xs ys)
 
 addCarry :: (Bit, Bit) -> ([Bit], Bit) -> ([Bit], Bit)
 addCarry (x, y) (list, prevCarry) = (s:list, newCarry)
