@@ -365,7 +365,7 @@ one :: BinaryGate
 one l _ = or_ l (not_ l)
 
 mux :: Bit -> Bit -> Bit -> Bit
-mux x y sel = if sel == Zero then x else y
+mux x y sel = or_ (and_ x (not_ sel)) (and_ y sel)
 
 demux :: Bit -> Bit -> (Bit, Bit)
 demux x sel = if sel == Zero then (x, Zero) else (Zero, x)
