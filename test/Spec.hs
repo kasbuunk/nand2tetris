@@ -36,6 +36,7 @@ tests = [testNand
 	, testOr16
 	, testMux16
 	, testOr8Way
+	, testMux4Way16
 	]
 
 testNand :: Bool
@@ -306,12 +307,23 @@ testOr8Way = and [
 	, or8Way arbitraryString8 == One
 	, or8Way arbitraryString8' == One
 	]
-		
+
+testMux4Way16 :: Bool
+testMux4Way16 = and [
+	muxApplied Zero Zero == arbitraryString16
+	, muxApplied Zero One == arbitraryString16'
+	, muxApplied One Zero == arbitraryString16''
+	, muxApplied One One == arbitraryString16'''
+	]
+	where
+		muxApplied = mux4Way16 arbitraryString16 arbitraryString16' arbitraryString16'' arbitraryString16''' 
 
 zero16 = take 16 zeroes
 one16 = take 16 ones
 arbitraryString16 = [Zero, Zero, Zero, One, Zero, Zero, One, Zero, Zero, Zero, One, One, Zero, Zero, Zero, One]
 arbitraryString16' = [One, Zero, One, Zero, Zero, One, One, Zero, One, One, One, One, One, Zero, Zero, One]
+arbitraryString16'' = [Zero, Zero, One, Zero, One, Zero, One, Zero, One, One, One, One, One, Zero, One, One]
+arbitraryString16''' = [One, Zero, One, Zero, Zero, Zero, Zero, Zero, Zero, One, Zero, One, Zero, One, Zero, One]
 
 zero8 = take 8 zeroes
 one8 = take 8 ones
@@ -438,6 +450,12 @@ orFold = foldl or_ Zero
 or8Way :: [Bit] -> Bit
 or8Way xs | length xs == 8 = orFold xs
 	  | otherwise = undefined
+
+mux4Way16 :: [Bit] -> [Bit] -> [Bit] -> [Bit] -> Bit -> Bit -> [Bit]
+mux4Way16 xs ys zs us selb sela = muxBus m1 m2 selb
+	where
+		m1 = muxBus xs ys sela
+		m2 = muxBus zs us sela
 
 -- xor' is an equivalent implementation of xor, with named functions for the
 -- edges that symbolise connections, similar to notation in HDL.
