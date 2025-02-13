@@ -487,13 +487,18 @@ mux4WayBus xs ys zs us selb sela = muxBus m1 m2 selb
 mux4Way16 :: [Bit] -> [Bit] -> [Bit] -> [Bit] -> Bit -> Bit -> [Bit]
 mux4Way16 = mux4WayBus
 
-mux8Way16 :: [Bit] -> [Bit] -> [Bit] -> [Bit]
+mux8WayBus :: [Bit] -> [Bit] -> [Bit] -> [Bit]
 	-> [Bit] -> [Bit] -> [Bit] -> [Bit]
 	-> Bit -> Bit -> Bit -> [Bit]
-mux8Way16 as bs cs ds es fs gs hs sel3 sel2 sel1 = muxBus m1 m2 sel3
+mux8WayBus as bs cs ds es fs gs hs sel3 sel2 sel1 = muxBus m1 m2 sel3
 	where
 		m1 = mux4WayBus as bs cs ds sel2 sel1
 		m2 = mux4WayBus es fs gs hs sel2 sel1
+
+mux8Way16 :: [Bit] -> [Bit] -> [Bit] -> [Bit]
+	-> [Bit] -> [Bit] -> [Bit] -> [Bit]
+	-> Bit -> Bit -> Bit -> [Bit]
+mux8Way16 = mux8WayBus
 
 -- xor' is an equivalent implementation of xor, with named functions for the
 -- edges that symbolise connections, similar to notation in HDL.
