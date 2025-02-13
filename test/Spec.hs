@@ -37,6 +37,7 @@ tests = [testNand
 	, testMux16
 	, testOr8Way
 	, testMux4Way16
+	, testMux8Way16
 	]
 
 testNand :: Bool
@@ -291,12 +292,12 @@ testMux16 :: Bool
 testMux16 = and [
 	mux16 zero16 zero16 Zero == zero16
 	, mux16 zero16 zero16 One == zero16
-	, mux16 zero16 arbitraryString16 Zero == zero16
-	, mux16 zero16 arbitraryString16 One == arbitraryString16
-	, mux16 arbitraryString16 zero16 Zero == arbitraryString16
-	, mux16 arbitraryString16 zero16 One == zero16
-	, mux16 arbitraryString16 arbitraryString16' Zero == arbitraryString16
-	, mux16 arbitraryString16 arbitraryString16' One == arbitraryString16'
+	, mux16 zero16 arbitraryString16_0 Zero == zero16
+	, mux16 zero16 arbitraryString16_0 One == arbitraryString16_0
+	, mux16 arbitraryString16_0 zero16 Zero == arbitraryString16_0
+	, mux16 arbitraryString16_0 zero16 One == zero16
+	, mux16 arbitraryString16_0 arbitraryString16_1 Zero == arbitraryString16_0
+	, mux16 arbitraryString16_0 arbitraryString16_1 One == arbitraryString16_1
 	]
 	where
 
@@ -310,25 +311,51 @@ testOr8Way = and [
 
 testMux4Way16 :: Bool
 testMux4Way16 = and [
-	muxApplied Zero Zero == arbitraryString16
-	, muxApplied Zero One == arbitraryString16'
-	, muxApplied One Zero == arbitraryString16''
-	, muxApplied One One == arbitraryString16'''
+	muxApplied Zero Zero == arbitraryString16_0
+	, muxApplied Zero One == arbitraryString16_1
+	, muxApplied One Zero == arbitraryString16_2
+	, muxApplied One One == arbitraryString16_3
 	]
 	where
-		muxApplied = mux4Way16 arbitraryString16 arbitraryString16' arbitraryString16'' arbitraryString16''' 
+		muxApplied = mux4Way16 arbitraryString16_0 arbitraryString16_1 arbitraryString16_2 arbitraryString16_3
+
+testMux8Way16 :: Bool
+testMux8Way16 = and [
+	muxApplied Zero Zero Zero == arbitraryString16_0
+	, muxApplied Zero Zero One == arbitraryString16_1
+	, muxApplied Zero One Zero == arbitraryString16_2
+	, muxApplied Zero One One == arbitraryString16_3
+	, muxApplied One Zero Zero == arbitraryString16_4
+	, muxApplied One Zero One == arbitraryString16_5
+	, muxApplied One One Zero == arbitraryString16_6
+	, muxApplied One One One == arbitraryString16_7
+	]
+	where
+		muxApplied = mux8Way16 
+			arbitraryString16_0
+			arbitraryString16_1
+			arbitraryString16_2
+			arbitraryString16_3
+			arbitraryString16_4
+			arbitraryString16_5
+			arbitraryString16_6
+			arbitraryString16_7
 
 zero16 = take 16 zeroes
 one16 = take 16 ones
-arbitraryString16 = [Zero, Zero, Zero, One, Zero, Zero, One, Zero, Zero, Zero, One, One, Zero, Zero, Zero, One]
-arbitraryString16' = [One, Zero, One, Zero, Zero, One, One, Zero, One, One, One, One, One, Zero, Zero, One]
-arbitraryString16'' = [Zero, Zero, One, Zero, One, Zero, One, Zero, One, One, One, One, One, Zero, One, One]
-arbitraryString16''' = [One, Zero, One, Zero, Zero, Zero, Zero, Zero, Zero, One, Zero, One, Zero, One, Zero, One]
+arbitraryString16_0 = [Zero, Zero, Zero, One, Zero, Zero, One, Zero, Zero, Zero, One, Zero, Zero, Zero, Zero, One]
+arbitraryString16_1 = [One, Zero, One, Zero, Zero, One, One, Zero, One, One, One, One, One, Zero, Zero, One]
+arbitraryString16_2 = [Zero, Zero, One, Zero, One, Zero, One, Zero, One, One, One, One, One, Zero, One, One]
+arbitraryString16_3 = [One, Zero, One, Zero, Zero, Zero, Zero, Zero, Zero, Zero, Zero, One, Zero, One, Zero, One]
+arbitraryString16_4 = [Zero, Zero, Zero, One, One, Zero, One, Zero, Zero, Zero, One, One, Zero, Zero, Zero, One]
+arbitraryString16_5 = [Zero, Zero, One, Zero, Zero, One, One, One, One, Zero, One, One, One, Zero, Zero, One]
+arbitraryString16_6 = [Zero, One, One, Zero, One, Zero, One, Zero, One, One, Zero, Zero, One, One, One, One]
+arbitraryString16_7 = [One, Zero, One, One, Zero, Zero, Zero, Zero, Zero, One, Zero, Zero, One, One, Zero, One]
 
 zero8 = take 8 zeroes
 one8 = take 8 ones
-arbitraryString8 = take 8 arbitraryString16
-arbitraryString8' = take 8 arbitraryString16'
+arbitraryString8 = take 8 arbitraryString16_0
+arbitraryString8' = take 8 arbitraryString16_1
 
 data Bit = Zero | One
 	deriving (Eq, Show)
@@ -459,6 +486,14 @@ mux4WayBus xs ys zs us selb sela = muxBus m1 m2 selb
 
 mux4Way16 :: [Bit] -> [Bit] -> [Bit] -> [Bit] -> Bit -> Bit -> [Bit]
 mux4Way16 = mux4WayBus
+
+mux8Way16 :: [Bit] -> [Bit] -> [Bit] -> [Bit]
+	-> [Bit] -> [Bit] -> [Bit] -> [Bit]
+	-> Bit -> Bit -> Bit -> [Bit]
+mux8Way16 as bs cs ds es fs gs hs sel3 sel2 sel1 = muxBus m1 m2 sel3
+	where
+		m1 = mux4WayBus as bs cs ds sel2 sel1
+		m2 = mux4WayBus es fs gs hs sel2 sel1
 
 -- xor' is an equivalent implementation of xor, with named functions for the
 -- edges that symbolise connections, similar to notation in HDL.
