@@ -38,6 +38,8 @@ tests = [testNand
 	, testOr8Way
 	, testMux4Way16
 	, testMux8Way16
+	, testDmux4Way
+	, testDmux8Way
 	]
 
 testNand :: Bool
@@ -341,6 +343,38 @@ testMux8Way16 = and [
 			arbitraryString16_6
 			arbitraryString16_7
 
+testDmux4Way :: Bool
+testDmux4Way = and [
+	dmux4Way Zero Zero Zero == (Zero, Zero, Zero, Zero)
+	, dmux4Way Zero Zero One == (Zero, Zero, Zero, Zero)
+	, dmux4Way Zero One Zero == (Zero, Zero, Zero, Zero)
+	, dmux4Way Zero One One == (Zero, Zero, Zero, Zero)
+	, dmux4Way One Zero Zero == (One, Zero, Zero, Zero)
+	, dmux4Way One Zero One == (Zero, One, Zero, Zero)
+	, dmux4Way One One Zero == (Zero, Zero, One, Zero)
+	, dmux4Way One One One == (Zero, Zero, Zero, One)
+	]
+
+testDmux8Way :: Bool
+testDmux8Way = and [
+	dmux8Way Zero Zero Zero Zero == (Zero, Zero, Zero, Zero, Zero, Zero, Zero, Zero)
+	, dmux8Way Zero Zero Zero One == (Zero, Zero, Zero, Zero, Zero, Zero, Zero, Zero)
+	, dmux8Way Zero Zero One Zero == (Zero, Zero, Zero, Zero, Zero, Zero, Zero, Zero)
+	, dmux8Way Zero Zero One One == (Zero, Zero, Zero, Zero, Zero, Zero, Zero, Zero)
+	, dmux8Way Zero One Zero Zero == (Zero, Zero, Zero, Zero, Zero, Zero, Zero, Zero)
+	, dmux8Way Zero One Zero One == (Zero, Zero, Zero, Zero, Zero, Zero, Zero, Zero)
+	, dmux8Way Zero One One Zero == (Zero, Zero, Zero, Zero, Zero, Zero, Zero, Zero)
+	, dmux8Way Zero One One One == (Zero, Zero, Zero, Zero, Zero, Zero, Zero, Zero)
+	, dmux8Way One Zero Zero Zero == (One, Zero, Zero, Zero, Zero, Zero, Zero, Zero)
+	, dmux8Way One Zero Zero One == (Zero, One, Zero, Zero, Zero, Zero, Zero, Zero)
+	, dmux8Way One Zero One Zero == (Zero, Zero, One, Zero, Zero, Zero, Zero, Zero)
+	, dmux8Way One Zero One One == (Zero, Zero, Zero, One, Zero, Zero, Zero, Zero)
+	, dmux8Way One One Zero Zero == (Zero, Zero, Zero, Zero, One, Zero, Zero, Zero)
+	, dmux8Way One One Zero One == (Zero, Zero, Zero, Zero, Zero, One, Zero, Zero)
+	, dmux8Way One One One Zero == (Zero, Zero, Zero, Zero, Zero, Zero, One, Zero)
+	, dmux8Way One One One One == (Zero, Zero, Zero, Zero, Zero, Zero, Zero, One)
+	]
+
 zero16 = take 16 zeroes
 one16 = take 16 ones
 arbitraryString16_0 = [Zero, Zero, Zero, One, Zero, Zero, One, Zero, Zero, Zero, One, Zero, Zero, Zero, Zero, One]
@@ -499,6 +533,24 @@ mux8Way16 :: [Bit] -> [Bit] -> [Bit] -> [Bit]
 	-> [Bit] -> [Bit] -> [Bit] -> [Bit]
 	-> Bit -> Bit -> Bit -> [Bit]
 mux8Way16 = mux8WayBus
+
+dmux4Way :: Bit -> Bit -> Bit -> (Bit, Bit, Bit, Bit)
+dmux4Way x selb sela = (x1, x2, x3, x4)
+	where
+		(x1_x3, x2_x4) = demux x sela
+		(x1_x2, x3_x4) = demux x selb
+		(x1, x3) = demux x1_x3 selb
+		(x2, x4) = demux x2_x4 selb
+
+dmux8Way :: Bit -> Bit -> Bit -> Bit
+	-> (Bit, Bit, Bit, Bit, Bit, Bit, Bit, Bit)
+dmux8Way x selc selb sela = (x1, x2, x3, x4, x5, x6, x7, x8)
+	where
+		(x1_x5, x2_x6, x3_x7, x4_x8) = dmux4Way x selb sela
+		(x1, x5) = demux x1_x5 selc
+		(x2, x6) = demux x2_x6 selc
+		(x3, x7) = demux x3_x7 selc
+		(x4, x8) = demux x4_x8 selc
 
 -- xor' is an equivalent implementation of xor, with named functions for the
 -- edges that symbolise connections, similar to notation in HDL.
