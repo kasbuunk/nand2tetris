@@ -451,11 +451,14 @@ or8Way :: [Bit] -> Bit
 or8Way xs | length xs == 8 = orFold xs
 	  | otherwise = undefined
 
-mux4Way16 :: [Bit] -> [Bit] -> [Bit] -> [Bit] -> Bit -> Bit -> [Bit]
-mux4Way16 xs ys zs us selb sela = muxBus m1 m2 selb
+mux4WayBus :: [Bit] -> [Bit] -> [Bit] -> [Bit] -> Bit -> Bit -> [Bit]
+mux4WayBus xs ys zs us selb sela = muxBus m1 m2 selb
 	where
 		m1 = muxBus xs ys sela
 		m2 = muxBus zs us sela
+
+mux4Way16 :: [Bit] -> [Bit] -> [Bit] -> [Bit] -> Bit -> Bit -> [Bit]
+mux4Way16 = mux4WayBus
 
 -- xor' is an equivalent implementation of xor, with named functions for the
 -- edges that symbolise connections, similar to notation in HDL.
