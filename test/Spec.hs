@@ -22,9 +22,9 @@ tests = [testNand
 	, testDistributive
 	, testDeMorgan
 	, testAddBuses
-	, testAdd
+	, testHalfAdder
 	, testAddCarry
-	, testAddWithCarry
+	, testFullAdder
 	, testMux
 	, testDemux
 	, testMuxDemux
@@ -182,24 +182,24 @@ testAddBuses = and [
 	]
 	where l = 16
 
-testAdd :: Bool
-testAdd = and [
-	add Zero Zero == (Zero, Zero),
-	add Zero One == (One, Zero),
-	add One Zero == (One, Zero),
-	add One One == (Zero, One)
+testHalfAdder :: Bool
+testHalfAdder = and [
+	halfAdder Zero Zero == (Zero, Zero),
+	halfAdder Zero One == (One, Zero),
+	halfAdder One Zero == (One, Zero),
+	halfAdder One One == (Zero, One)
 	]
 
-testAddWithCarry :: Bool
-testAddWithCarry = and [
-	addWithCarry Zero Zero Zero == (Zero, Zero),
-	addWithCarry Zero Zero One == (One, Zero),
-	addWithCarry Zero One Zero == (One, Zero),
-	addWithCarry Zero One One == (Zero, One),
-	addWithCarry One Zero Zero == (One, Zero),
-	addWithCarry One Zero One == (Zero, One),
-	addWithCarry One One Zero == (Zero, One),
-	addWithCarry One One One == (One, One)
+testFullAdder :: Bool
+testFullAdder = and [
+	fullAdder Zero Zero Zero == (Zero, Zero),
+	fullAdder Zero Zero One == (One, Zero),
+	fullAdder Zero One Zero == (One, Zero),
+	fullAdder Zero One One == (Zero, One),
+	fullAdder One Zero Zero == (One, Zero),
+	fullAdder One Zero One == (Zero, One),
+	fullAdder One One Zero == (Zero, One),
+	fullAdder One One One == (One, One)
 	]
 
 testAddCarry :: Bool
@@ -597,13 +597,13 @@ composeBGateSplitter :: BinaryGate -> Splitter -> (Bit -> Bit -> (Bit, Bit))
 composeBGateSplitter bg s l r = s (bg l r)
 
 -- add adds two Bits and returns the result and a carry Bit.
-add :: Bit -> Bit -> (Bit, Bit)
-add = addWithCarry Zero
+halfAdder :: Bit -> Bit -> (Bit, Bit)
+halfAdder = fullAdder Zero
 
--- addWithCarry adds three Bits (two from input and a third from the previous 
+-- fullAdder adds three Bits (two from input and a third from the previous 
 -- carry) and returns the result and a carry Bit.
-addWithCarry :: Bit -> Bit -> Bit -> (Bit, Bit)
-addWithCarry x y z = (thisDigit, carry)
+fullAdder :: Bit -> Bit -> Bit -> (Bit, Bit)
+fullAdder x y z = (thisDigit, carry)
 	where
 		thisDigit = xor x (xor y z)
 		carry = or_ (or_ (and_ x y) (and_ x z)) (and_ y z)
@@ -615,4 +615,4 @@ addBus xs ys = foldr addCarry ([], Zero) (zip xs ys)
 addCarry :: (Bit, Bit) -> ([Bit], Bit) -> ([Bit], Bit)
 addCarry (x, y) (list, prevCarry) = (s:list, newCarry)
 	where
-		(s, newCarry) = addWithCarry x y prevCarry
+		(s, newCarry) = fullAdder x y prevCarry

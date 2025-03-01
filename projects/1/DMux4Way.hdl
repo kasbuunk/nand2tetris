@@ -1,6 +1,7 @@
 // This file is part of www.nand2tetris.org
 // and the book "The Elements of Computing Systems"
 // by Nisan and Schocken, MIT Press.
+// File name: projects/1/DMux4Way.hdl
 /**
  * 4-way demultiplexor:
  * [a, b, c, d] = [in, 0, 0, 0] if sel = 00
@@ -13,5 +14,8 @@ CHIP DMux4Way {
     OUT a, b, c, d;
 
     PARTS:
-    //// Replace this comment with your code.
+    DMux(in=in, sel=sel[0], a=aORc, b=bORd);
+    DMux(in=in, sel=sel[1], a=aORb, b=cORd);
+    DMux(in=aORc, sel=sel[1], a=a, b=c);
+    DMux(in=bORd, sel=sel[1], a=b, b=d);
 }
