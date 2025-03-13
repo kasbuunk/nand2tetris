@@ -1,6 +1,7 @@
 // This file is part of www.nand2tetris.org
 // and the book "The Elements of Computing Systems"
 // by Nisan and Schocken, MIT Press.
+// File name: projects/5/CPU.hdl
 /**
  * The Hack Central Processing unit (CPU).
  * Parses the binary code in the instruction input and executes it according to the
@@ -31,5 +32,60 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-	//// Replace this comment with your code.
+    // C-instruction.
+    Or(a=instruction[15],b=false, out=Cinstruction);
+
+    // A-instruction.
+    Not(in=Cinstruction, out=Ainstruction);
+
+    // A-Register.
+    ARegister(in=Ain, load=loadA, out=Aout, out[0..14]=addressM);
+
+    // Select input to A-Register.
+    Mux16(a=ALUout, b=instruction, sel=Ainstruction, out=Ain);
+
+    // Load A if instruction is an A-instruction or ALU output that stores in A.
+    Or(a=Ainstruction, b=storeA, out=loadA);
+
+    // Store computation in A.
+    And(a=instruction[5], b=Cinstruction, out=storeA);
+
+    // Store computation in M.
+    And(a=instruction[3], b=Cinstruction, out=writeM);
+
+    // Store computation in D.
+    And(a=instruction[4], b=Cinstruction, out=loadD);
+
+    // Input x to ALU: A or M.
+    Mux16(a=Aout, b=inM, sel=CinstructionWithaUnset, out=ALUy);
+
+    // C-instruction with a==0.
+    And(a=Cinstruction, b=instruction[12], out=CinstructionWithaUnset);
+
+    // D-Register.
+    DRegister(in=ALUout, load=loadD, out=ALUx);
+
+    // ALU.
+    ALU(x=ALUx, y=ALUy, zx=zx, nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=ALUout, out=outM, zr=zr, ng=ng);
+    Or(a=instruction[11], b=false, out=zx);
+
+
+    // Program Counter.
+    PC(in=Aout, load=jump, inc=incPC, reset=reset, out[0..14]=pc);
+
+    // To jump or not to jump.
+    And(a=Cinstruction, b=instruction[0], out=jumpIFpos);
+    And(a=Cinstruction, b=instruction[1], out=jumpIFzr);
+    And(a=Cinstruction, b=instruction[2], out=jumpIFng);
+    Not(in=zr, out=nonzr);
+    Not(in=ng, out=nonng);
+    And(a=nonzr, b=nonng, out=pos);
+    And(a=jumpIFpos, b=pos, out=jumpBecausePos);
+    And(a=jumpIFzr, b=zr, out=jumpBecauseZr);
+    And(a=jumpIFng, b=ng, out=jumpBecauseNg);
+    Or(a=jumpBecausePos, b=jumpBecauseZr, out=jumpBecauseNonneg);
+    Or(a=jumpBecauseNonneg, b=jumpBecauseNg, out=jump);
+
+    // Increment if no jump.
+    Not(in=jump, out=incPC);
 }
