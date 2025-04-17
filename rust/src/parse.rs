@@ -114,7 +114,14 @@ fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
                 jump: Jump::Null,
             }))
         }
-        _ => return Err(ParseError::InvalidInput),
+        d_eq_a if d_eq_a.starts_with("M=-1") => {
+            AssemblyLine::Instruction(Instruction::C(CInstruction {
+                destination: Destination::M,
+                computation: Computation::MinusOne,
+                jump: Jump::Null,
+            }))
+        }
+        unrecognised => return Err(ParseError::InvalidInput(unrecognised.into())),
     };
 
     Ok(parsed_line)
@@ -128,18 +135,21 @@ impl SymbolTable {
     }
 
     fn insert(&mut self, symbol: String, address: u16) {
-        todo!()
+        let symbol_entry = (Symbol::Variable(VariableSymbol(symbol)), address);
+        self.0.push(symbol_entry);
     }
 }
 
 #[derive(Debug, Clone)]
 pub enum ParseError {
-    InvalidInput,
+    InvalidInput(String),
 }
 
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "no comment")
+        match self {
+            err => write!(f, "{}", err),
+        }
     }
 }
 
@@ -240,6 +250,7 @@ impl Into<String> for Computation {
     fn into(self) -> String {
         match self {
             Computation::A => "0110000".into(),
+            Computation::MinusOne => "0111010".into(),
             _ => todo!(),
         }
     }
@@ -249,6 +260,7 @@ impl Into<String> for Destination {
     fn into(self) -> String {
         match self {
             Destination::D => "010".into(),
+            Destination::M => "001".into(),
             _ => todo!(),
         }
     }
@@ -445,15 +457,15 @@ mod tests {
         for test_case in test_cases {
             let output =
                 generate_machine_code(vec![test_case.assembly_line], initialise_symbol_table());
-            let thing = machine_instructions_to_string(output);
+            let code = machine_instructions_to_string(output);
 
             assert_eq!(
                 test_case.expected_machine_code,
-                thing.clone(),
-                "{} failed: {}, {}",
+                code.clone(),
+                "{} failed: expected {}; actual {}",
                 &test_case.name,
                 &test_case.expected_machine_code,
-                &thing
+                &code
             );
         }
     }
@@ -595,7 +607,7 @@ M=D";
             // ("copy_ram", cp_ram_asm, cp_ram_bin),
             // ("goto", goto_29_asm, goto_29_bin),
             // ("cond_goto", goto_conditional_asm, goto_conditional_bin),
-            // ("set_x", set_x_asm, set_x_bin),
+            ("set_x", set_x_asm, set_x_bin),
             // ("decrement", decrement_asm, decrement_bin),
             // ("increase_by", increase_by_x_asm, increase_by_x_bin),
             // ("sum_1_to_n", sum_1_to_n_asm, sum_1_to_n_bin),
