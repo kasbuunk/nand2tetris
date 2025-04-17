@@ -62,8 +62,13 @@ fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
         comment if comment.starts_with("//") => AssemblyLine::Comment(String::from(comment)),
         a_instruction if a_instruction.starts_with("@") => {
             let symbol = a_instruction.chars().skip(1).collect::<String>();
+
+            let a_instruction_content = match symbol.parse::<u16>() {
+                Ok(address) => AInstruction::Address(address),
+                Err(_) => AInstruction::Symbol(symbol),
+            };
             // TODO: parse type of symbol, decimal value or symbol bound to such value.
-            AssemblyLine::Instruction(Instruction::A(AInstruction(symbol)))
+            AssemblyLine::Instruction(Instruction::A(a_instruction_content))
         }
         d_eq_a if d_eq_a.starts_with("D=A") => {
             AssemblyLine::Instruction(Instruction::C(CInstruction {
@@ -115,10 +120,13 @@ impl Into<String> for AssemblyLine {
     fn into(self) -> String {
         match self {
             AssemblyLine::Comment(_) => "".into(),
-            AssemblyLine::Instruction(Instruction::A(AInstruction(decimal))) => {
+            AssemblyLine::Instruction(Instruction::A(AInstruction::Symbol(decimal))) => {
                 // TODO: validate before that this is u16 and type it.
                 let number = decimal.parse::<u16>().unwrap();
                 u16_to_binary(number)
+            }
+            AssemblyLine::Instruction(Instruction::A(AInstruction::Address(address))) => {
+                u16_to_binary(address)
             }
             AssemblyLine::Instruction(Instruction::C(c_instruction)) => {
                 let computation: String = c_instruction.computation.into();
@@ -145,7 +153,10 @@ enum Symbol {
 }
 
 #[derive(PartialEq, Debug)]
-struct AInstruction(String);
+enum AInstruction {
+    Symbol(String),
+    Address(u16),
+}
 
 #[derive(PartialEq, Debug)]
 struct CInstruction {
@@ -294,7 +305,7 @@ mod tests {
                 name: "variable_declaration".into(),
                 assembly_line: "@i".into(),
                 expected_parsed_assembly_line: AssemblyLine::Instruction(Instruction::A(
-                    AInstruction("i".into()),
+                    AInstruction::Symbol("i".into()),
                 )),
             },
             TestCase {
@@ -324,7 +335,7 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_code() {
+    fn test_generate_machine_code() {
         struct TestCase {
             name: String,
             assembly_line: AssemblyLine,
@@ -339,7 +350,7 @@ mod tests {
             },
             TestCase {
                 name: "@17".into(),
-                assembly_line: AssemblyLine::Instruction(Instruction::A(AInstruction("17".into()))),
+                assembly_line: AssemblyLine::Instruction(Instruction::A(AInstruction::Address(17))),
                 expected_machine_code: "0000000000010001".into(),
             },
             TestCase {
