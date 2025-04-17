@@ -309,6 +309,13 @@ mod tests {
                 )),
             },
             TestCase {
+                name: "address".into(),
+                assembly_line: "@18".into(),
+                expected_parsed_assembly_line: AssemblyLine::Instruction(Instruction::A(
+                    AInstruction::Address(18),
+                )),
+            },
+            TestCase {
                 name: "set_d".into(),
                 assembly_line: "D=A".into(),
                 expected_parsed_assembly_line: AssemblyLine::Instruction(Instruction::C(
