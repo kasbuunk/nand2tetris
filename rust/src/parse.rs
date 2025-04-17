@@ -1,4 +1,4 @@
-use std::fmt::{self, Display};
+use std::fmt;
 
 pub fn assemble(assembly_code: &str) -> Result<String, ParseError> {
     let assembly_lines = parse(assembly_code)?;
@@ -13,9 +13,11 @@ pub fn assemble(assembly_code: &str) -> Result<String, ParseError> {
     let symbol_table = build_symbol_table(predefined_symbols, label_symbols);
 
     // Second pass: Generate machine code.
-    let machine_code = generate_machine_code(assembly_lines, symbol_table);
+    let machine_instructions = generate_machine_code(assembly_lines, symbol_table);
 
-    Ok(machine_code.to_string())
+    let machine_code = machine_instructions_to_string(machine_instructions);
+
+    Ok(machine_code)
 }
 
 fn initialise_symbol_table() -> SymbolTable {
@@ -30,19 +32,54 @@ fn build_symbol_table(x: SymbolTable, _: SymbolTable) -> SymbolTable {
     x
 }
 
-fn generate_machine_code(assembly_lines: Vec<AssemblyLine>, _: SymbolTable) -> String {
-    assembly_lines
-        .into_iter()
-        .map(generate_machine_line)
-        .collect::<Vec<String>>()
-        .into_iter()
-        .filter(|s| *s != "")
-        .collect::<Vec<String>>()
-        .join("\n")
+fn generate_machine_code(
+    assembly_lines: Vec<AssemblyLine>,
+    mut symbol_table: SymbolTable,
+) -> Vec<MachineInstruction> {
+    let mut instructions = Vec::new();
+    let mut next_symbol_address = 16;
+
+    for line in assembly_lines {
+        match line {
+            AssemblyLine::Instruction(Instruction::A(AInstruction::Symbol(symbol))) => {
+                let address = match symbol_table.get(&symbol) {
+                    None => {
+                        let address = next_symbol_address;
+                        symbol_table.insert(symbol, address);
+                        next_symbol_address += 1;
+
+                        address
+                    } // insert with next symbol address and increment
+                    Some(address) => address,
+                };
+
+                let instruction = MachineInstruction::A(Address(address));
+
+                instructions.push(instruction);
+            }
+            AssemblyLine::Instruction(Instruction::A(AInstruction::Address(address))) => {
+                let instruction = MachineInstruction::A(Address(address));
+
+                instructions.push(instruction);
+            }
+            AssemblyLine::Instruction(Instruction::C(c_instruction)) => {
+                let instruction = MachineInstruction::C(c_instruction);
+
+                instructions.push(instruction);
+            }
+            _ => {}
+        }
+    }
+
+    instructions
 }
 
-fn generate_machine_line(assembly_line: AssemblyLine) -> String {
-    assembly_line.into()
+fn machine_instructions_to_string(instructions: Vec<MachineInstruction>) -> String {
+    instructions
+        .into_iter()
+        .map(|x| x.into())
+        .collect::<Vec<String>>()
+        .join("\n")
 }
 
 enum Assembler {
@@ -67,7 +104,7 @@ fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
                 Ok(address) => AInstruction::Address(address),
                 Err(_) => AInstruction::Symbol(symbol),
             };
-            // TODO: parse type of symbol, decimal value or symbol bound to such value.
+
             AssemblyLine::Instruction(Instruction::A(a_instruction_content))
         }
         d_eq_a if d_eq_a.starts_with("D=A") => {
@@ -83,7 +120,17 @@ fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
     Ok(parsed_line)
 }
 
-struct SymbolTable(Vec<(Symbol, u32)>);
+struct SymbolTable(Vec<(Symbol, u16)>);
+
+impl SymbolTable {
+    fn get(&mut self, symbol: &str) -> Option<u16> {
+        None
+    }
+
+    fn insert(&mut self, symbol: String, address: u16) {
+        todo!()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum ParseError {
@@ -111,6 +158,30 @@ enum AssemblyLine {
     LabelDeclaration(LabelSymbol),
     Comment(String),
 }
+
+#[derive(PartialEq, Debug)]
+enum MachineInstruction {
+    A(Address),
+    C(CInstruction),
+}
+
+impl Into<String> for MachineInstruction {
+    fn into(self) -> String {
+        match self {
+            MachineInstruction::A(address) => u16_to_binary(address.0),
+            MachineInstruction::C(c_instruction) => {
+                let computation: String = c_instruction.computation.into();
+                let destination: String = c_instruction.destination.into();
+                let jump: String = c_instruction.jump.into();
+
+                format!("111{}{}{}", computation, destination, jump,)
+            }
+        }
+    }
+}
+
+#[derive(PartialEq, Debug)]
+struct Address(u16);
 
 fn u16_to_binary(n: u16) -> String {
     format!("{:#018b}", n).chars().skip(2).collect::<String>()
@@ -372,12 +443,17 @@ mod tests {
         ];
 
         for test_case in test_cases {
-            let output = generate_machine_line(test_case.assembly_line);
+            let output =
+                generate_machine_code(vec![test_case.assembly_line], initialise_symbol_table());
+            let thing = machine_instructions_to_string(output);
 
             assert_eq!(
-                test_case.expected_machine_code, output,
+                test_case.expected_machine_code,
+                thing.clone(),
                 "{} failed: {}, {}",
-                &test_case.name, &test_case.expected_machine_code, &output
+                &test_case.name,
+                &test_case.expected_machine_code,
+                &thing
             );
         }
     }
@@ -527,7 +603,7 @@ M=D";
 
         for test_case in test_cases {
             let output = assemble(&test_case.1).expect("assemble failed");
-            assert_eq!(test_case.2, output, "test case failed: {}", test_case.0);
+            assert_eq!(test_case.2, output, "{} failed", test_case.0);
         }
     }
 }
