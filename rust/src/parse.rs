@@ -107,18 +107,80 @@ fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
 
             AssemblyLine::Instruction(Instruction::A(a_instruction_content))
         }
-        d_eq_a if d_eq_a.starts_with("D=A") => {
+        loop_label if loop_label.starts_with("(") => todo!(),
+        c_instruction => {
+            let (destination_str, unconsumed_instruction) = match c_instruction.split_once("=") {
+                None => ("null", c_instruction),
+                Some((destination, unconsumed_instruction)) => {
+                    (destination, unconsumed_instruction)
+                }
+            };
+
+            let (computation_str, jump_str) = match unconsumed_instruction.split_once(";") {
+                None => (unconsumed_instruction, "null"),
+                Some((computation, jump)) => (computation, jump),
+            };
+
+            let computation = match computation_str {
+                "0" => Computation::Zero,
+                "1" => Computation::One,
+                "-1" => Computation::MinusOne,
+                "D" => Computation::D,
+                "A" => Computation::A,
+                "!D" => Computation::NotD,
+                "!A" => Computation::NotA,
+                "-D" => Computation::MinusD,
+                "-A" => Computation::MinusA,
+                "D+1" => Computation::DPlusOne,
+                "A+1" => Computation::APlusOne,
+                "D-1" => Computation::DMinusOne,
+                "A-1" => Computation::AMinusOne,
+                "D+A" => Computation::DPlusA,
+                "D-A" => Computation::DMinusA,
+                "A-D" => Computation::AMinusD,
+                "D&A" => Computation::DAndA,
+                "D|A" => Computation::DOrA,
+                "M" => Computation::M,
+                "!M" => Computation::NotM,
+                "-M" => Computation::MinusM,
+                "M+1" => Computation::MPlusOne,
+                "M-1" => Computation::MMinusOne,
+                "D+M" => Computation::DPlusM,
+                "D-M" => Computation::DMinusM,
+                "M-D" => Computation::MMinusD,
+                "D&M" => Computation::DAndM,
+                "D|M" => Computation::DOrM,
+                input => panic!("unexpected input: {}", input), // handle
+            };
+
+            let destination = match destination_str {
+                "null" => Destination::Null,
+                "M" => Destination::M,
+                "D" => Destination::D,
+                "DM" => Destination::DM,
+                "A" => Destination::A,
+                "AM" => Destination::AM,
+                "AD" => Destination::AD,
+                "ADM" => Destination::ADM,
+                input => panic!("unexpected input: {}", input), // handle
+            };
+
+            let jump = match jump_str {
+                "null" => Jump::Null,
+                "JGT" => Jump::JGT,
+                "JEQ" => Jump::JEQ,
+                "JGE" => Jump::JGE,
+                "JLT" => Jump::JLT,
+                "JNE" => Jump::JNE,
+                "JLE" => Jump::JLE,
+                "JMP" => Jump::JMP,
+                input => panic!("unexpected input: {}", input), // handle
+            };
+
             AssemblyLine::Instruction(Instruction::C(CInstruction {
-                destination: Destination::D,
-                computation: Computation::A,
-                jump: Jump::Null,
-            }))
-        }
-        d_eq_a if d_eq_a.starts_with("M=-1") => {
-            AssemblyLine::Instruction(Instruction::C(CInstruction {
-                destination: Destination::M,
-                computation: Computation::MinusOne,
-                jump: Jump::Null,
+                destination,
+                computation,
+                jump,
             }))
         }
         unrecognised => return Err(ParseError::InvalidInput(unrecognised.into())),
@@ -249,9 +311,34 @@ struct CInstruction {
 impl Into<String> for Computation {
     fn into(self) -> String {
         match self {
-            Computation::A => "0110000".into(),
+            Computation::Zero => "0101010".into(),
+            Computation::One => "0111111".into(),
             Computation::MinusOne => "0111010".into(),
-            _ => todo!(),
+            Computation::D => "0001100".into(),
+            Computation::A => "0110000".into(),
+            Computation::NotD => "0001101".into(),
+            Computation::NotA => "0110001".into(),
+            Computation::MinusD => "0001111".into(),
+            Computation::MinusA => "0110011".into(),
+            Computation::DPlusOne => "0011111".into(),
+            Computation::APlusOne => "0110111".into(),
+            Computation::DMinusOne => "0001110".into(),
+            Computation::AMinusOne => "0110010".into(),
+            Computation::DPlusA => "0000010".into(),
+            Computation::DMinusA => "0010011".into(),
+            Computation::AMinusD => "0000111".into(),
+            Computation::DAndA => "0000000".into(),
+            Computation::DOrA => "0010101".into(),
+            Computation::M => "1110000".into(),
+            Computation::NotM => "1110001".into(),
+            Computation::MinusM => "1110011".into(),
+            Computation::MPlusOne => "1110111".into(),
+            Computation::MMinusOne => "1110010".into(),
+            Computation::DPlusM => "1000010".into(),
+            Computation::DMinusM => "1010011".into(),
+            Computation::MMinusD => "1000111".into(),
+            Computation::DAndM => "1000000".into(),
+            Computation::DOrM => "1010101".into(),
         }
     }
 }
@@ -259,9 +346,14 @@ impl Into<String> for Computation {
 impl Into<String> for Destination {
     fn into(self) -> String {
         match self {
-            Destination::D => "010".into(),
+            Destination::Null => "000".into(),
             Destination::M => "001".into(),
-            _ => todo!(),
+            Destination::D => "010".into(),
+            Destination::DM => "011".into(),
+            Destination::A => "100".into(),
+            Destination::AM => "101".into(),
+            Destination::AD => "110".into(),
+            Destination::ADM => "111".into(),
         }
     }
 }
@@ -269,7 +361,13 @@ impl Into<String> for Jump {
     fn into(self) -> String {
         match self {
             Jump::Null => "000".into(),
-            _ => todo!(),
+            Jump::JGT => "001".into(),
+            Jump::JEQ => "010".into(),
+            Jump::JGE => "011".into(),
+            Jump::JLT => "100".into(),
+            Jump::JNE => "101".into(),
+            Jump::JLE => "110".into(),
+            Jump::JMP => "111".into(),
         }
     }
 }
@@ -369,6 +467,138 @@ struct VariableSymbol(String);
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_c_instruction() {
+        struct TestCase {
+            assembly_line: String,
+            expected: String,
+        }
+
+        let test_cases = vec![
+            TestCase {
+                assembly_line: "0".into(),
+                expected: "1110101010000000".into(),
+            },
+            TestCase {
+                assembly_line: "M=1;JGT".into(),
+                expected: "1110111111001001".into(),
+            },
+            TestCase {
+                assembly_line: "D=-1;JEQ".into(),
+                expected: "1110111010010010".into(),
+            },
+            TestCase {
+                assembly_line: "DM=D;JGE".into(),
+                expected: "1110001100011011".into(),
+            },
+            TestCase {
+                assembly_line: "A=A;JLT".into(),
+                expected: "1110110000100100".into(),
+            },
+            TestCase {
+                assembly_line: "AM=!D;JNE".into(),
+                expected: "1110001101101101".into(),
+            },
+            TestCase {
+                assembly_line: "AD=!A;JLE".into(),
+                expected: "1110110001110110".into(),
+            },
+            TestCase {
+                assembly_line: "ADM=-D;JMP".into(),
+                expected: "1110001111111111".into(),
+            },
+            TestCase {
+                assembly_line: "-A".into(),
+                expected: "1110110011000000".into(),
+            },
+            TestCase {
+                assembly_line: "D+1".into(),
+                expected: "1110011111000000".into(),
+            },
+            TestCase {
+                assembly_line: "A+1".into(),
+                expected: "1110110111000000".into(),
+            },
+            TestCase {
+                assembly_line: "D-1".into(),
+                expected: "1110001110000000".into(),
+            },
+            TestCase {
+                assembly_line: "A-1".into(),
+                expected: "1110110010000000".into(),
+            },
+            TestCase {
+                assembly_line: "D+A".into(),
+                expected: "1110000010000000".into(),
+            },
+            TestCase {
+                assembly_line: "D-A".into(),
+                expected: "1110010011000000".into(),
+            },
+            TestCase {
+                assembly_line: "A-D".into(),
+                expected: "1110000111000000".into(),
+            },
+            TestCase {
+                assembly_line: "D&A".into(),
+                expected: "1110000000000000".into(),
+            },
+            TestCase {
+                assembly_line: "D|A".into(),
+                expected: "1110010101000000".into(),
+            },
+            TestCase {
+                assembly_line: "M".into(),
+                expected: "1111110000000000".into(),
+            },
+            TestCase {
+                assembly_line: "!M".into(),
+                expected: "1111110001000000".into(),
+            },
+            TestCase {
+                assembly_line: "-M".into(),
+                expected: "1111110011000000".into(),
+            },
+            TestCase {
+                assembly_line: "M+1".into(),
+                expected: "1111110111000000".into(),
+            },
+            TestCase {
+                assembly_line: "M-1".into(),
+                expected: "1111110010000000".into(),
+            },
+            TestCase {
+                assembly_line: "D+M".into(),
+                expected: "1111000010000000".into(),
+            },
+            TestCase {
+                assembly_line: "D-M".into(),
+                expected: "1111010011000000".into(),
+            },
+            TestCase {
+                assembly_line: "M-D".into(),
+                expected: "1111000111000000".into(),
+            },
+            TestCase {
+                assembly_line: "D&M".into(),
+                expected: "1111000000000000".into(),
+            },
+            TestCase {
+                assembly_line: "D|M".into(),
+                expected: "1111010101000000".into(),
+            },
+        ];
+
+        for test_case in test_cases {
+            let output: String = assemble(&test_case.assembly_line).unwrap();
+            assert_eq!(
+                test_case.expected, output,
+                "failed {}: expected: {:?}; got {:?}",
+                test_case.assembly_line, test_case.expected, output,
+            );
+        }
+    }
 
     #[test]
     fn test_parse_line() {
