@@ -256,10 +256,10 @@ struct SymbolTable(Vec<(Symbol, Address)>);
 
 impl SymbolTable {
     fn get(&mut self, symbol: &Symbol) -> Option<Address> {
-        match self.0.iter().find(|(key, _)| key == symbol) {
-            None => None,
-            Some((_, value)) => Some((*value).clone()),
-        }
+        self.0
+            .iter()
+            .find(|(key, _)| key == symbol)
+            .map(|(_, value)| value.clone())
     }
 
     fn insert(&mut self, symbol: Symbol, address: Address) {
