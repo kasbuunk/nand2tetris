@@ -38,10 +38,13 @@ fn initialise_symbol_table() -> SymbolTable {
         (Symbol(String::from("R13")), 13),
         (Symbol(String::from("R14")), 14),
         (Symbol(String::from("R15")), 15),
-        (Symbol(String::from("THIS")), 0),
-        (Symbol(String::from("THAT")), 0),
-        (Symbol(String::from("SCREEN")), 0),
-        (Symbol(String::from("KEYBOARD")), 0),
+        (Symbol(String::from("SP")), 0),
+        (Symbol(String::from("LCL")), 1),
+        (Symbol(String::from("ARG")), 2),
+        (Symbol(String::from("THIS")), 3),
+        (Symbol(String::from("THAT")), 4),
+        (Symbol(String::from("SCREEN")), 16384),
+        (Symbol(String::from("KBD")), 24576),
     ])
 }
 
