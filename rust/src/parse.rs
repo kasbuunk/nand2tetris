@@ -833,19 +833,23 @@ M=D";
             ("empty", "", ""),
             ("comment", "// only some comment", ""),
             ("set_d", d_eq_17_asm, d_eq_17_bin),
-            // ("set_ram", ram_set_asm, ram_set_bin),
-            // ("copy_ram", cp_ram_asm, cp_ram_bin),
-            // ("goto", goto_29_asm, goto_29_bin),
-            // ("cond_goto", goto_conditional_asm, goto_conditional_bin),
+            ("set_ram", ram_set_asm, ram_set_bin),
+            ("copy_ram", cp_ram_asm, cp_ram_bin),
+            ("goto", goto_29_asm, goto_29_bin),
+            ("cond_goto", goto_conditional_asm, goto_conditional_bin),
             ("set_x", set_x_asm, set_x_bin),
-            // ("decrement", decrement_asm, decrement_bin),
+            ("decrement", decrement_asm, decrement_bin),
             // ("increase_by", increase_by_x_asm, increase_by_x_bin),
             // ("sum_1_to_n", sum_1_to_n_asm, sum_1_to_n_bin),
         ];
 
         for test_case in test_cases {
             let output = assemble(&test_case.1).expect("assemble failed");
-            assert_eq!(test_case.2, output, "{} failed", test_case.0);
+            assert_eq!(
+                test_case.2, output,
+                "failed {}: expected {}, actual {}",
+                test_case.0, test_case.2, output
+            );
         }
     }
 }
