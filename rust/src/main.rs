@@ -3,14 +3,14 @@ use std::error;
 use std::fs;
 use std::io::Write;
 
-mod parse;
+mod assemble;
 
 fn main() -> Result<(), Box<dyn error::Error>> {
     let config = load_config()?;
 
     let input = read_source_file(&config.source_file_name)?;
 
-    let output = parse::assemble(&input).unwrap();
+    let output = assemble::assemble(&input).unwrap();
 
     write_output_file(&config.output_file_name, output.as_bytes())?;
 
