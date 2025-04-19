@@ -92,7 +92,7 @@ fn generate_machine_code(
                         next_symbol_address += 1;
 
                         address
-                    } // insert with next symbol address and increment
+                    }
                     Some(address) => address,
                 };
 
@@ -123,12 +123,6 @@ fn machine_instructions_to_string(instructions: Vec<MachineInstruction>) -> Stri
         .map(|x| x.into())
         .collect::<Vec<String>>()
         .join("\n")
-}
-
-enum Assembler {
-    Initialise,
-    FirstPass,
-    SecondPass,
 }
 
 fn parse(assembly_lines: &str) -> Result<Vec<AssemblyLine>, ParseError> {
@@ -230,7 +224,6 @@ fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
                 jump,
             }))
         }
-        unrecognised => return Err(ParseError::InvalidInput(unrecognised.into())),
     };
 
     Ok(parsed_line)
@@ -264,9 +257,6 @@ impl fmt::Display for ParseError {
         }
     }
 }
-
-#[derive(PartialEq, Debug)]
-struct MemoryAddress(u16);
 
 #[derive(PartialEq, Debug)]
 enum AssemblyLine {
@@ -468,42 +458,6 @@ enum Jump {
     JLE,
     JMP,
 }
-
-enum PredefinedSymbol {
-    R0,
-    R1,
-    R2,
-    R3,
-    R4,
-    R5,
-    R6,
-    R7,
-    R8,
-    R9,
-    R10,
-    R11,
-    R12,
-    R13,
-    R14,
-    R15,
-    SP,
-    LCL,
-    Arg,
-    This,
-    That,
-    Screen,
-    KBD,
-}
-
-#[derive(PartialEq, Debug)]
-struct LabelSymbol {
-    name: String,
-    value: MemoryAddress,
-}
-
-struct VariableSymbol(String);
-
-// TODO: Syntax: Symbols, Constants and White space (p. 106).
 
 #[cfg(test)]
 mod tests {
