@@ -41,7 +41,8 @@ fn generate_machine_code(
 
     for line in assembly_lines {
         match line {
-            AssemblyLine::Instruction(Instruction::A(AInstruction::Symbol(symbol))) => {
+            AssemblyLine::Instruction(Instruction::A(AInstruction::Symbol(s))) => {
+                let symbol = Symbol(s);
                 let address = match symbol_table.get(&symbol) {
                     None => {
                         let address = next_symbol_address;
@@ -192,12 +193,15 @@ fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
 struct SymbolTable(Vec<(Symbol, u16)>);
 
 impl SymbolTable {
-    fn get(&mut self, symbol: &str) -> Option<u16> {
-        None
+    fn get(&mut self, symbol: &Symbol) -> Option<u16> {
+        match self.0.iter().find(|(key, _)| key == symbol) {
+            None => None,
+            Some((_, value)) => Some(*value),
+        }
     }
 
-    fn insert(&mut self, symbol: String, address: u16) {
-        let symbol_entry = (Symbol::Variable(VariableSymbol(symbol)), address);
+    fn insert(&mut self, symbol: Symbol, address: u16) {
+        let symbol_entry = (symbol, address);
         self.0.push(symbol_entry);
     }
 }
@@ -213,12 +217,6 @@ impl fmt::Display for ParseError {
             err => write!(f, "{}", err),
         }
     }
-}
-
-#[derive(PartialEq, Debug)]
-enum Bit {
-    Zero,
-    One,
 }
 
 #[derive(PartialEq, Debug)]
@@ -289,11 +287,8 @@ enum Instruction {
     C(CInstruction),
 }
 
-enum Symbol {
-    Predefined(PredefinedSymbol),
-    Label(LabelSymbol),
-    Variable(VariableSymbol),
-}
+#[derive(PartialEq, Debug)]
+struct Symbol(String);
 
 #[derive(PartialEq, Debug)]
 enum AInstruction {
@@ -839,7 +834,7 @@ M=D";
             ("cond_goto", goto_conditional_asm, goto_conditional_bin),
             ("set_x", set_x_asm, set_x_bin),
             ("decrement", decrement_asm, decrement_bin),
-            // ("increase_by", increase_by_x_asm, increase_by_x_bin),
+            ("increase_by", increase_by_x_asm, increase_by_x_bin),
             // ("sum_1_to_n", sum_1_to_n_asm, sum_1_to_n_bin),
         ];
 
