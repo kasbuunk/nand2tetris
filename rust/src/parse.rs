@@ -22,39 +22,40 @@ pub fn assemble(assembly_code: &str) -> Result<String, ParseError> {
 
 fn initialise_symbol_table() -> SymbolTable {
     SymbolTable(vec![
-        (Symbol(String::from("R0")), 0),
-        (Symbol(String::from("R1")), 1),
-        (Symbol(String::from("R2")), 2),
-        (Symbol(String::from("R3")), 3),
-        (Symbol(String::from("R4")), 4),
-        (Symbol(String::from("R5")), 5),
-        (Symbol(String::from("R6")), 6),
-        (Symbol(String::from("R7")), 7),
-        (Symbol(String::from("R8")), 8),
-        (Symbol(String::from("R9")), 9),
-        (Symbol(String::from("R10")), 10),
-        (Symbol(String::from("R11")), 11),
-        (Symbol(String::from("R12")), 12),
-        (Symbol(String::from("R13")), 13),
-        (Symbol(String::from("R14")), 14),
-        (Symbol(String::from("R15")), 15),
-        (Symbol(String::from("SP")), 0),
-        (Symbol(String::from("LCL")), 1),
-        (Symbol(String::from("ARG")), 2),
-        (Symbol(String::from("THIS")), 3),
-        (Symbol(String::from("THAT")), 4),
-        (Symbol(String::from("SCREEN")), 16384),
-        (Symbol(String::from("KBD")), 24576),
+        (Symbol(String::from("R0")), Address(0)),
+        (Symbol(String::from("R1")), Address(1)),
+        (Symbol(String::from("R2")), Address(2)),
+        (Symbol(String::from("R3")), Address(3)),
+        (Symbol(String::from("R4")), Address(4)),
+        (Symbol(String::from("R5")), Address(5)),
+        (Symbol(String::from("R6")), Address(6)),
+        (Symbol(String::from("R7")), Address(7)),
+        (Symbol(String::from("R8")), Address(8)),
+        (Symbol(String::from("R9")), Address(9)),
+        (Symbol(String::from("R10")), Address(10)),
+        (Symbol(String::from("R11")), Address(11)),
+        (Symbol(String::from("R12")), Address(12)),
+        (Symbol(String::from("R13")), Address(13)),
+        (Symbol(String::from("R14")), Address(14)),
+        (Symbol(String::from("R15")), Address(15)),
+        (Symbol(String::from("SP")), Address(0)),
+        (Symbol(String::from("LCL")), Address(1)),
+        (Symbol(String::from("ARG")), Address(2)),
+        (Symbol(String::from("THIS")), Address(3)),
+        (Symbol(String::from("THAT")), Address(4)),
+        (Symbol(String::from("SCREEN")), Address(16384)),
+        (Symbol(String::from("KBD")), Address(24576)),
     ])
 }
 
 fn find_label_symbols(lines: &Vec<AssemblyLine>) -> SymbolTable {
     let mut index: u16 = 0;
-    let mut symbol_table: Vec<(Symbol, u16)> = Vec::new();
+    let mut symbol_table: Vec<(Symbol, Address)> = Vec::new();
+
     for line in lines {
         match line {
             AssemblyLine::LabelDeclaration(Symbol(symbol)) => {
-                symbol_table.push((Symbol(symbol.to_owned()), index));
+                symbol_table.push((Symbol(symbol.to_owned()), Address(index)));
             }
             AssemblyLine::Instruction(_) => {
                 index += 1;
@@ -70,7 +71,7 @@ fn build_symbol_table(x: SymbolTable, y: SymbolTable) -> SymbolTable {
     let entries =
         x.0.into_iter()
             .chain(y.0.into_iter())
-            .collect::<Vec<(Symbol, u16)>>();
+            .collect::<Vec<(Symbol, Address)>>();
     SymbolTable(entries)
 }
 
@@ -87,8 +88,8 @@ fn generate_machine_code(
                 let symbol = Symbol(s);
                 let address = match symbol_table.get(&symbol) {
                     None => {
-                        let address = next_symbol_address;
-                        symbol_table.insert(symbol, address);
+                        let address = Address(next_symbol_address);
+                        symbol_table.insert(symbol, address.clone());
                         next_symbol_address += 1;
 
                         address
@@ -96,7 +97,7 @@ fn generate_machine_code(
                     Some(address) => address,
                 };
 
-                let instruction = MachineInstruction::A(Address(address));
+                let instruction = MachineInstruction::A(address);
 
                 instructions.push(instruction);
             }
@@ -229,17 +230,17 @@ fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
     Ok(parsed_line)
 }
 
-struct SymbolTable(Vec<(Symbol, u16)>);
+struct SymbolTable(Vec<(Symbol, Address)>);
 
 impl SymbolTable {
-    fn get(&mut self, symbol: &Symbol) -> Option<u16> {
+    fn get(&mut self, symbol: &Symbol) -> Option<Address> {
         match self.0.iter().find(|(key, _)| key == symbol) {
             None => None,
-            Some((_, value)) => Some(*value),
+            Some((_, value)) => Some((*value).clone()),
         }
     }
 
-    fn insert(&mut self, symbol: Symbol, address: u16) {
+    fn insert(&mut self, symbol: Symbol, address: Address) {
         let symbol_entry = (symbol, address);
         self.0.push(symbol_entry);
     }
@@ -286,7 +287,7 @@ impl Into<String> for MachineInstruction {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 struct Address(u16);
 
 fn u16_to_binary(n: u16) -> String {
