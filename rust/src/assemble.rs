@@ -397,6 +397,8 @@ fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
                 "M" => Destination::M,
                 "D" => Destination::D,
                 "DM" => Destination::DM,
+                // The specs only mention 'DM', but a given test case makes clear this is needed.
+                "MD" => Destination::DM,
                 "A" => Destination::A,
                 "AM" => Destination::AM,
                 "AD" => Destination::AD,
@@ -821,6 +823,205 @@ M=D";
 0000000000010000
 1110001100001000";
 
+        let add_two_nums_asm: &str = "@2
+D=A
+@3
+D=D+A
+@0
+M=D
+";
+
+        let add_two_nums_bin: &str = "0000000000000010
+1110110000010000
+0000000000000011
+1110000010010000
+0000000000000000
+1110001100001000";
+
+        let max_asm: &str = "  // D = R0 - R1
+  @R0
+  D=M
+  @R1
+  D=D-M
+  // If (D > 0) goto ITSR0
+  @ITSR0
+  D;JGT
+  // Its R1
+  @R1
+  D=M
+  @OUTPUT_D
+  0;JMP
+(ITSR0)
+  @R0
+  D=M
+(OUTPUT_D)
+  @R2
+  M=D
+(END)
+  @END
+  0;JMP
+";
+        let max_bin: &str = "0000000000000000
+1111110000010000
+0000000000000001
+1111010011010000
+0000000000001010
+1110001100000001
+0000000000000001
+1111110000010000
+0000000000001100
+1110101010000111
+0000000000000000
+1111110000010000
+0000000000000010
+1110001100001000
+0000000000001110
+1110101010000111";
+
+        let max_symbolic_asm: &str = "@0
+D=M
+@1
+D=D-M
+@10
+D;JGT
+@1
+D=M
+@12
+0;JMP
+@0
+D=M
+@2
+M=D
+@14
+0;JMP";
+        let max_symbolic_bin: &str = "0000000000000000
+1111110000010000
+0000000000000001
+1111010011010000
+0000000000001010
+1110001100000001
+0000000000000001
+1111110000010000
+0000000000001100
+1110101010000111
+0000000000000000
+1111110000010000
+0000000000000010
+1110001100001000
+0000000000001110
+1110101010000111";
+
+        let rect_asm: &str = "   // If (R0 <= 0) goto END else n = R0
+   @R0
+   D=M
+   @END
+   D;JLE
+   @n
+   M=D
+   // addr = base address of first screen row
+   @SCREEN
+   D=A
+   @addr
+   M=D
+(LOOP)
+   // RAM[addr] = -1
+   @addr
+   A=M
+   M=-1
+   // addr = base address of next screen row
+   @addr
+   D=M
+   @32
+   D=D+A
+   @addr
+   M=D
+   // decrements n and loops
+   @n
+   MD=M-1
+   @LOOP
+   D;JGT
+(END)
+   @END
+   0;JMP
+";
+        let rect_bin: &str = "0000000000000000
+1111110000010000
+0000000000010111
+1110001100000110
+0000000000010000
+1110001100001000
+0100000000000000
+1110110000010000
+0000000000010001
+1110001100001000
+0000000000010001
+1111110000100000
+1110111010001000
+0000000000010001
+1111110000010000
+0000000000100000
+1110000010010000
+0000000000010001
+1110001100001000
+0000000000010000
+1111110010011000
+0000000000001010
+1110001100000001
+0000000000010111
+1110101010000111";
+
+        let rect_symbolic_asm: &str = "@0
+D=M
+@23
+D;JLE
+@16
+M=D
+@16384
+D=A
+@17
+M=D
+@17
+A=M
+M=-1
+@17
+D=M
+@32
+D=D+A
+@17
+M=D
+@16
+MD=M-1
+@10
+D;JGT
+@23
+0;JMP
+";
+        let rect_symbolic_bin: &str = "0000000000000000
+1111110000010000
+0000000000010111
+1110001100000110
+0000000000010000
+1110001100001000
+0100000000000000
+1110110000010000
+0000000000010001
+1110001100001000
+0000000000010001
+1111110000100000
+1110111010001000
+0000000000010001
+1111110000010000
+0000000000100000
+1110000010010000
+0000000000010001
+1110001100001000
+0000000000010000
+1111110010011000
+0000000000001010
+1110001100000001
+0000000000010111
+1110101010000111";
+
         let test_cases = vec![
             ("empty", "", ""),
             ("comment", "// only some comment", ""),
@@ -833,6 +1034,11 @@ M=D";
             ("decrement", decrement_asm, decrement_bin),
             ("increase_by", increase_by_x_asm, increase_by_x_bin),
             ("sum_1_to_n", sum_1_to_n_asm, sum_1_to_n_bin),
+            ("add_two_nums", add_two_nums_asm, add_two_nums_bin),
+            ("max", max_asm, max_bin),
+            ("max_symbolic", max_symbolic_asm, max_symbolic_bin),
+            ("rect", rect_asm, rect_bin),
+            ("rect_symbolic", rect_symbolic_asm, rect_symbolic_bin),
         ];
 
         for test_case in test_cases {
