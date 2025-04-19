@@ -15,9 +15,14 @@ pub fn assemble(assembly_code: &str) -> Result<String, ParseError> {
     // Second pass: Generate machine code.
     let machine_instructions = generate_machine_code(assembly_lines, symbol_table);
 
+    // Format instructions as binary code of zeroes and ones in ASCII.
     let machine_code = machine_instructions_to_string(machine_instructions);
 
     Ok(machine_code)
+}
+
+fn parse(assembly_lines: &str) -> Result<Vec<AssemblyLine>, ParseError> {
+    assembly_lines.lines().map(parse_line).collect()
 }
 
 fn initialise_symbol_table() -> SymbolTable {
@@ -124,10 +129,6 @@ fn machine_instructions_to_string(instructions: Vec<MachineInstruction>) -> Stri
         .map(|x| x.into())
         .collect::<Vec<String>>()
         .join("\n")
-}
-
-fn parse(assembly_lines: &str) -> Result<Vec<AssemblyLine>, ParseError> {
-    assembly_lines.lines().map(parse_line).collect()
 }
 
 fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
@@ -693,7 +694,9 @@ mod tests {
         }
     }
 
-    static sum_1_to_n_asm: &str = "// i = 1
+    #[test]
+    fn test_parse() {
+        let sum_1_to_n_asm: &str = "// i = 1
 @i
 M=1
 // sum = 0
@@ -729,7 +732,7 @@ M=D
 (END)
 @END
 0;JMP";
-    static sum_1_to_n_bin: &str = "0000000000010000
+        let sum_1_to_n_bin: &str = "0000000000010000
 1110111111001000
 0000000000010001
 1110101010001000
@@ -756,72 +759,70 @@ M=D
 0000000000011000
 1110101010000111";
 
-    static d_eq_17_asm: &str = "// d = 17
+        let d_eq_17_asm: &str = "// d = 17
 @17
 D=A";
-    static d_eq_17_bin: &str = "0000000000010001
+        let d_eq_17_bin: &str = "0000000000010001
 1110110000010000";
 
-    static ram_set_asm: &str = "// RAM[100] = 17
+        let ram_set_asm: &str = "// RAM[100] = 17
 @17
 D=A
 @100
 M=D";
-    static ram_set_bin: &str = "0000000000010001
+        let ram_set_bin: &str = "0000000000010001
 1110110000010000
 0000000001100100
 1110001100001000";
 
-    static cp_ram_asm: &str = "// RAM[100] = RAM[200]
+        let cp_ram_asm: &str = "// RAM[100] = RAM[200]
 @200
 D=M
 @100
 M=D";
-    static cp_ram_bin: &str = "0000000011001000
+        let cp_ram_bin: &str = "0000000011001000
 1111110000010000
 0000000001100100
 1110001100001000";
 
-    static goto_29_asm: &str = "// goto 29
+        let goto_29_asm: &str = "// goto 29
 @29
 0;JMP";
-    static goto_29_bin: &str = "0000000000011101
+        let goto_29_bin: &str = "0000000000011101
 1110101010000111";
 
-    static goto_conditional_asm: &str = "// if D>0 goto 63
+        let goto_conditional_asm: &str = "// if D>0 goto 63
 @63
 D;JGT";
-    static goto_conditional_bin: &str = "0000000000111111
+        let goto_conditional_bin: &str = "0000000000111111
 1110001100000001";
 
-    static set_x_asm: &str = "// x = -1
+        let set_x_asm: &str = "// x = -1
 @x
 M=-1";
-    static set_x_bin: &str = "0000000000010000
+        let set_x_bin: &str = "0000000000010000
 1110111010001000";
 
-    static decrement_asm: &str = "// count = count - 1
+        let decrement_asm: &str = "// count = count - 1
 @count
 M=M-1";
-    static decrement_bin: &str = "0000000000010000
+        let decrement_bin: &str = "0000000000010000
 1111110010001000";
 
-    static increase_by_x_asm: &str = "// sum = sum + x
+        let increase_by_x_asm: &str = "// sum = sum + x
 @sum
 D=M
 @x
 D=D+M
 @sum
 M=D";
-    static increase_by_x_bin: &str = "0000000000010000
+        let increase_by_x_bin: &str = "0000000000010000
 1111110000010000
 0000000000010001
 1111000010010000
 0000000000010000
 1110001100001000";
 
-    #[test]
-    fn test_parse() {
         let test_cases = vec![
             ("empty", "", ""),
             ("comment", "// only some comment", ""),
