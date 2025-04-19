@@ -147,7 +147,13 @@ fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
         }
         label_with_brackets if label_with_brackets.starts_with("(") => {
             let label_with_ending_bracket = label_with_brackets.chars().skip(1).collect::<String>();
-            let label = label_with_ending_bracket.split(")").next().unwrap(); // TODO: handle
+            let label = match label_with_ending_bracket.split(")").next() {
+                None => {
+                    return Err(ParseError::InvalidInput("missing closing bracket".into()));
+                }
+                Some(label) => label.to_string(),
+            };
+
             AssemblyLine::LabelDeclaration(Symbol(String::from(label)))
         }
         c_instruction => {
@@ -192,7 +198,12 @@ fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
                 "M-D" => Computation::MMinusD,
                 "D&M" => Computation::DAndM,
                 "D|M" => Computation::DOrM,
-                input => panic!("unexpected input: {}", input), // handle
+                input => {
+                    return Err(ParseError::InvalidInput(format!(
+                        "expected computation, got {}",
+                        input
+                    )));
+                }
             };
 
             let destination = match destination_str {
@@ -204,7 +215,12 @@ fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
                 "AM" => Destination::AM,
                 "AD" => Destination::AD,
                 "ADM" => Destination::ADM,
-                input => panic!("unexpected input: {}", input), // handle
+                input => {
+                    return Err(ParseError::InvalidInput(format!(
+                        "expected destination, got {}",
+                        input
+                    )));
+                }
             };
 
             let jump = match jump_str {
@@ -216,7 +232,12 @@ fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
                 "JNE" => Jump::JNE,
                 "JLE" => Jump::JLE,
                 "JMP" => Jump::JMP,
-                input => panic!("unexpected input: {}", input), // handle
+                input => {
+                    return Err(ParseError::InvalidInput(format!(
+                        "expected jump, got {}",
+                        input
+                    )));
+                }
             };
 
             AssemblyLine::Instruction(Instruction::C(CInstruction {
@@ -292,30 +313,6 @@ struct Address(u16);
 
 fn u16_to_binary(n: u16) -> String {
     format!("{:#018b}", n).chars().skip(2).collect::<String>()
-}
-
-impl Into<String> for AssemblyLine {
-    fn into(self) -> String {
-        match self {
-            AssemblyLine::Comment(_) => "".into(),
-            AssemblyLine::Instruction(Instruction::A(AInstruction::Symbol(decimal))) => {
-                // TODO: validate before that this is u16 and type it.
-                let number = decimal.parse::<u16>().unwrap();
-                u16_to_binary(number)
-            }
-            AssemblyLine::Instruction(Instruction::A(AInstruction::Address(address))) => {
-                u16_to_binary(address)
-            }
-            AssemblyLine::Instruction(Instruction::C(c_instruction)) => {
-                let computation: String = c_instruction.computation.into();
-                let destination: String = c_instruction.destination.into();
-                let jump: String = c_instruction.jump.into();
-
-                format!("111{}{}{}", computation, destination, jump,)
-            }
-            _ => todo!(),
-        }
-    }
 }
 
 #[derive(PartialEq, Debug)]
