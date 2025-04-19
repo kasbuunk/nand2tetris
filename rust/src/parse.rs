@@ -21,15 +21,54 @@ pub fn assemble(assembly_code: &str) -> Result<String, ParseError> {
 }
 
 fn initialise_symbol_table() -> SymbolTable {
-    SymbolTable(vec![])
+    SymbolTable(vec![
+        (Symbol(String::from("R0")), 0),
+        (Symbol(String::from("R1")), 1),
+        (Symbol(String::from("R2")), 2),
+        (Symbol(String::from("R3")), 3),
+        (Symbol(String::from("R4")), 4),
+        (Symbol(String::from("R5")), 5),
+        (Symbol(String::from("R6")), 6),
+        (Symbol(String::from("R7")), 7),
+        (Symbol(String::from("R8")), 8),
+        (Symbol(String::from("R9")), 9),
+        (Symbol(String::from("R10")), 10),
+        (Symbol(String::from("R11")), 11),
+        (Symbol(String::from("R12")), 12),
+        (Symbol(String::from("R13")), 13),
+        (Symbol(String::from("R14")), 14),
+        (Symbol(String::from("R15")), 15),
+        (Symbol(String::from("THIS")), 0),
+        (Symbol(String::from("THAT")), 0),
+        (Symbol(String::from("SCREEN")), 0),
+        (Symbol(String::from("KEYBOARD")), 0),
+    ])
 }
 
-fn find_label_symbols(_: &Vec<AssemblyLine>) -> SymbolTable {
-    SymbolTable(vec![])
+fn find_label_symbols(lines: &Vec<AssemblyLine>) -> SymbolTable {
+    let mut index: u16 = 0;
+    let mut symbol_table: Vec<(Symbol, u16)> = Vec::new();
+    for line in lines {
+        match line {
+            AssemblyLine::LabelDeclaration(Symbol(symbol)) => {
+                symbol_table.push((Symbol(symbol.to_owned()), index));
+            }
+            AssemblyLine::Instruction(_) => {
+                index += 1;
+            }
+            _ => {}
+        }
+    }
+
+    SymbolTable(symbol_table)
 }
 
-fn build_symbol_table(x: SymbolTable, _: SymbolTable) -> SymbolTable {
-    x
+fn build_symbol_table(x: SymbolTable, y: SymbolTable) -> SymbolTable {
+    let entries =
+        x.0.into_iter()
+            .chain(y.0.into_iter())
+            .collect::<Vec<(Symbol, u16)>>();
+    SymbolTable(entries)
 }
 
 fn generate_machine_code(
@@ -108,7 +147,11 @@ fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
 
             AssemblyLine::Instruction(Instruction::A(a_instruction_content))
         }
-        loop_label if loop_label.starts_with("(") => todo!(),
+        label_with_brackets if label_with_brackets.starts_with("(") => {
+            let label_with_ending_bracket = label_with_brackets.chars().skip(1).collect::<String>();
+            let label = label_with_ending_bracket.split(")").next().unwrap(); // TODO: handle
+            AssemblyLine::LabelDeclaration(Symbol(String::from(label)))
+        }
         c_instruction => {
             let (destination_str, unconsumed_instruction) = match c_instruction.split_once("=") {
                 None => ("null", c_instruction),
@@ -214,7 +257,7 @@ pub enum ParseError {
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            err => write!(f, "{}", err),
+            ParseError::InvalidInput(err) => write!(f, "invalid input: {}", err),
         }
     }
 }
@@ -225,7 +268,7 @@ struct MemoryAddress(u16);
 #[derive(PartialEq, Debug)]
 enum AssemblyLine {
     Instruction(Instruction),
-    LabelDeclaration(LabelSymbol),
+    LabelDeclaration(Symbol),
     Comment(String),
 }
 
@@ -835,7 +878,7 @@ M=D";
             ("set_x", set_x_asm, set_x_bin),
             ("decrement", decrement_asm, decrement_bin),
             ("increase_by", increase_by_x_asm, increase_by_x_bin),
-            // ("sum_1_to_n", sum_1_to_n_asm, sum_1_to_n_bin),
+            ("sum_1_to_n", sum_1_to_n_asm, sum_1_to_n_bin),
         ];
 
         for test_case in test_cases {
