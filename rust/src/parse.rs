@@ -200,8 +200,8 @@ fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
                 "D|M" => Computation::DOrM,
                 input => {
                     return Err(ParseError::InvalidInput(format!(
-                        "expected computation, got {}",
-                        input
+                        "invalid computation '{}', in line '{}'",
+                        input, trimmed_line,
                     )));
                 }
             };
@@ -217,8 +217,8 @@ fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
                 "ADM" => Destination::ADM,
                 input => {
                     return Err(ParseError::InvalidInput(format!(
-                        "expected destination, got {}",
-                        input
+                        "invalid destination '{}', in line '{}'",
+                        input, trimmed_line,
                     )));
                 }
             };
@@ -234,8 +234,8 @@ fn parse_line(assembly_line: &str) -> Result<AssemblyLine, ParseError> {
                 "JMP" => Jump::JMP,
                 input => {
                     return Err(ParseError::InvalidInput(format!(
-                        "expected jump, got {}",
-                        input
+                        "invalid jump '{}', in line '{}'",
+                        input, trimmed_line,
                     )));
                 }
             };
