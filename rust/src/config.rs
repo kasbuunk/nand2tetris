@@ -8,16 +8,25 @@ pub fn load_config(args: Vec<String>) -> Result<Config, ConfigError> {
 
     let source_file_name = args[0].clone();
     let mut source_iter = source_file_name.split(".");
-    let program_name = source_iter.next().unwrap();
+    let program_name = match source_iter.next() {
+        None => return Err(ConfigError::InvalidFileName),
+        Some(program) if !program.is_ascii() => {
+            return Err(ConfigError::InvalidFileName);
+        }
+        Some(program) => match program.chars().next() {
+            None => return Err(ConfigError::InvalidFileName),
+            Some(c) if !c.is_ascii_uppercase() => {
+                return Err(ConfigError::StartUpperCase);
+            }
+            _ => program,
+        },
+    };
     let output_file_name = program_name.to_string();
 
-    match program_name.chars().next() {
-        None => return Err(ConfigError::InvalidFileName),
-        Some(c) if !c.is_ascii_uppercase() => {
-            return Err(ConfigError::StartUpperCase);
-        }
-        _ => {}
-    }
+    let extension = match source_iter.next() {
+        None => return Err(ConfigError::MissingExtension),
+        Some(extension) => extension,
+    };
 
     Ok(Config {
         source_file_name,
@@ -36,6 +45,7 @@ pub enum ConfigError {
     MissingSource,
     InvalidFileName,
     StartUpperCase,
+    MissingExtension,
 }
 
 impl fmt::Display for ConfigError {
@@ -44,6 +54,7 @@ impl fmt::Display for ConfigError {
             ConfigError::MissingSource => "must provide a source file name",
             ConfigError::InvalidFileName => "source file name is invalid",
             ConfigError::StartUpperCase => "source file name must start with upper case letter",
+            ConfigError::MissingExtension => "missing file extension",
         };
         write!(f, "config error: {}", err)?;
         Ok(())
@@ -87,6 +98,11 @@ mod tests {
                 name: "only_extension".to_string(),
                 args: vec![".asm".to_string()],
                 expected_config: Err(ConfigError::InvalidFileName),
+            },
+            TestCase {
+                name: "missing extension".to_string(),
+                args: vec!["Program".to_string()],
+                expected_config: Err(ConfigError::MissingExtension),
             },
         ];
 
