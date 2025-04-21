@@ -23,12 +23,13 @@ pub fn load_config(args: Vec<String>) -> Result<Config, ConfigError> {
     };
     let output_file_name = program_name.to_string();
 
-    let extension = match source_iter.next() {
+    let file_type = match source_iter.next() {
         None => return Err(ConfigError::MissingExtension),
-        Some(extension) => extension,
+        Some(_) => FileType::Assembly,
     };
 
     Ok(Config {
+        file_type,
         source_file_name,
         output_file_name,
     })
@@ -36,8 +37,14 @@ pub fn load_config(args: Vec<String>) -> Result<Config, ConfigError> {
 
 #[derive(Debug, PartialEq)]
 pub struct Config {
+    file_type: FileType,
     pub source_file_name: String,
     pub output_file_name: String,
+}
+
+#[derive(Debug, PartialEq)]
+enum FileType {
+    Assembly,
 }
 
 #[derive(PartialEq, Debug)]
@@ -80,6 +87,7 @@ mod tests {
                 name: "assembly".to_string(),
                 args: vec!["Program.asm".to_string()],
                 expected_config: Ok(Config {
+                    file_type: FileType::Assembly,
                     source_file_name: "Program.asm".to_string(),
                     output_file_name: "Program".to_string(),
                 }),
