@@ -1,14 +1,19 @@
 use std::error;
+use std::fmt;
 
-pub fn load_config(args: Vec<String>) -> Result<Config, Box<dyn error::Error>> {
+pub fn load_config(args: Vec<String>) -> Result<Config, ConfigError> {
     if args.len() != 1 {
-        return Err(format!("Please provide the name of the source file.\n").into());
+        return Err(ConfigError::MissingSource);
     }
 
     let source_file_name = args[0].clone();
     let mut source_iter = source_file_name.split(".");
     let program_name = source_iter.next().unwrap();
     let output_file_name = program_name.to_string();
+
+    if !program_name.chars().next().unwrap().is_ascii_uppercase() {
+        return Err(ConfigError::StartUpperCase);
+    }
 
     Ok(Config {
         source_file_name,
@@ -22,6 +27,25 @@ pub struct Config {
     pub output_file_name: String,
 }
 
+#[derive(PartialEq, Debug)]
+pub enum ConfigError {
+    MissingSource,
+    StartUpperCase,
+}
+
+impl fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let err = match self {
+            ConfigError::MissingSource => "must provide a source file name",
+            ConfigError::StartUpperCase => "source file name must start with upper case letter",
+        };
+        write!(f, "config error: {}", err)?;
+        Ok(())
+    }
+}
+
+impl error::Error for ConfigError {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -31,20 +55,32 @@ mod tests {
         struct TestCase {
             name: String,
             args: Vec<String>,
-            expected_config: Config,
+            expected_config: Result<Config, ConfigError>,
         }
 
-        let test_cases = vec![TestCase {
-            name: "assembly".to_string(),
-            args: vec!["Program.asm".to_string()],
-            expected_config: Config {
-                source_file_name: "Program.asm".to_string(),
-                output_file_name: "Program".to_string(),
+        let test_cases = vec![
+            TestCase {
+                name: "assembly".to_string(),
+                args: vec!["Program.asm".to_string()],
+                expected_config: Ok(Config {
+                    source_file_name: "Program.asm".to_string(),
+                    output_file_name: "Program".to_string(),
+                }),
             },
-        }];
+            TestCase {
+                name: "missing_source".to_string(),
+                args: vec![],
+                expected_config: Err(ConfigError::MissingSource),
+            },
+            TestCase {
+                name: "start_with_capital_err".to_string(),
+                args: vec!["program.asm".to_string()],
+                expected_config: Err(ConfigError::StartUpperCase),
+            },
+        ];
 
         for test_case in test_cases {
-            let config = load_config(test_case.args)?;
+            let config = load_config(test_case.args);
             assert_eq!(
                 test_case.expected_config, config,
                 "{} failed: expected {:?}, actual {:?}",
