@@ -21,15 +21,17 @@ pub fn load_config(args: Vec<String>) -> Result<Config, ConfigError> {
             _ => program,
         },
     };
-    let output_file_name = program_name.to_string();
 
-    let file_type = match source_iter.next() {
+    let (file_type, target_extension) = match source_iter.next() {
         None => return Err(ConfigError::MissingExtension),
         Some(extension) => match extension {
-            "asm" => FileType::Assembly,
+            "asm" => (FileType::Assembly, ""),
+            "vm" => (FileType::VMTranslate, ".asm"),
             _ => return Err(ConfigError::UnsupportedExtension),
         },
     };
+
+    let output_file_name = format!("{}{}", program_name, target_extension);
 
     Ok(Config {
         file_type,
@@ -40,14 +42,15 @@ pub fn load_config(args: Vec<String>) -> Result<Config, ConfigError> {
 
 #[derive(Debug, PartialEq)]
 pub struct Config {
-    file_type: FileType,
+    pub file_type: FileType,
     pub source_file_name: String,
     pub output_file_name: String,
 }
 
 #[derive(Debug, PartialEq)]
-enum FileType {
+pub enum FileType {
     Assembly,
+    VMTranslate,
 }
 
 #[derive(PartialEq, Debug)]
@@ -95,6 +98,15 @@ mod tests {
                     file_type: FileType::Assembly,
                     source_file_name: "Program.asm".to_string(),
                     output_file_name: "Program".to_string(),
+                }),
+            },
+            TestCase {
+                name: "vm_translate".to_string(),
+                args: vec!["Program.vm".to_string()],
+                expected_config: Ok(Config {
+                    file_type: FileType::VMTranslate,
+                    source_file_name: "Program.vm".to_string(),
+                    output_file_name: "Program.asm".to_string(),
                 }),
             },
             TestCase {

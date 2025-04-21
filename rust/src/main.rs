@@ -5,6 +5,7 @@ use std::io::Write;
 
 mod assemble;
 mod config;
+mod vm;
 
 fn main() -> Result<(), Box<dyn error::Error>> {
     let args: Vec<String> = env::args().skip(1).collect();
@@ -13,7 +14,7 @@ fn main() -> Result<(), Box<dyn error::Error>> {
 
     let input = read_source_file(&config.source_file_name)?;
 
-    let output = assemble::assemble(&input)?;
+    let output = run(&config, &input)?;
 
     write_output_file(&config.output_file_name, output.as_bytes())?;
 
@@ -34,4 +35,13 @@ fn write_output_file(path: &str, content: &[u8]) -> Result<(), Box<dyn error::Er
     output_file.write_all(content)?;
 
     Ok(())
+}
+
+fn run(config: &config::Config, input: &str) -> Result<String, Box<dyn error::Error>> {
+    let output = match config.file_type {
+        config::FileType::Assembly => assemble::assemble(&input)?,
+        config::FileType::VMTranslate => vm::translate(&input)?,
+    };
+
+    Ok(output)
 }
