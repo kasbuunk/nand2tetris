@@ -1,12 +1,12 @@
-use std::env;
 use std::error;
 use std::fs;
 use std::io::Write;
 
 mod assemble;
+mod config;
 
 fn main() -> Result<(), Box<dyn error::Error>> {
-    let config = load_config()?;
+    let config = config::load_config()?;
 
     let input = read_source_file(&config.source_file_name)?;
 
@@ -31,22 +31,4 @@ fn write_output_file(path: &str, content: &[u8]) -> Result<(), Box<dyn error::Er
     output_file.write_all(content)?;
 
     Ok(())
-}
-
-fn load_config() -> Result<Config, Box<dyn error::Error>> {
-    let args: Vec<String> = env::args().collect();
-
-    if args.len() != 2 {
-        return Err(format!("Please provide the name of the source file.\n").into());
-    }
-
-    Ok(Config {
-        source_file_name: args[1].clone(),
-        output_file_name: String::from("output"),
-    })
-}
-
-struct Config {
-    source_file_name: String,
-    output_file_name: String,
 }
