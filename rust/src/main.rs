@@ -1,3 +1,4 @@
+use std::env;
 use std::error;
 use std::fs;
 use std::io::Write;
@@ -6,7 +7,9 @@ mod assemble;
 mod config;
 
 fn main() -> Result<(), Box<dyn error::Error>> {
-    let config = config::load_config()?;
+    let args: Vec<String> = env::args().skip(1).collect();
+
+    let config = config::load_config(args)?;
 
     let input = read_source_file(&config.source_file_name)?;
 
