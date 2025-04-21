@@ -11,8 +11,12 @@ pub fn load_config(args: Vec<String>) -> Result<Config, ConfigError> {
     let program_name = source_iter.next().unwrap();
     let output_file_name = program_name.to_string();
 
-    if !program_name.chars().next().unwrap().is_ascii_uppercase() {
-        return Err(ConfigError::StartUpperCase);
+    match program_name.chars().next() {
+        None => return Err(ConfigError::InvalidFileName),
+        Some(c) if !c.is_ascii_uppercase() => {
+            return Err(ConfigError::StartUpperCase);
+        }
+        _ => {}
     }
 
     Ok(Config {
@@ -30,6 +34,7 @@ pub struct Config {
 #[derive(PartialEq, Debug)]
 pub enum ConfigError {
     MissingSource,
+    InvalidFileName,
     StartUpperCase,
 }
 
@@ -37,6 +42,7 @@ impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let err = match self {
             ConfigError::MissingSource => "must provide a source file name",
+            ConfigError::InvalidFileName => "source file name is invalid",
             ConfigError::StartUpperCase => "source file name must start with upper case letter",
         };
         write!(f, "config error: {}", err)?;
@@ -76,6 +82,11 @@ mod tests {
                 name: "start_with_capital_err".to_string(),
                 args: vec!["program.asm".to_string()],
                 expected_config: Err(ConfigError::StartUpperCase),
+            },
+            TestCase {
+                name: "only_extension".to_string(),
+                args: vec![".asm".to_string()],
+                expected_config: Err(ConfigError::InvalidFileName),
             },
         ];
 
