@@ -25,7 +25,10 @@ pub fn load_config(args: Vec<String>) -> Result<Config, ConfigError> {
 
     let file_type = match source_iter.next() {
         None => return Err(ConfigError::MissingExtension),
-        Some(_) => FileType::Assembly,
+        Some(extension) => match extension {
+            "asm" => FileType::Assembly,
+            _ => return Err(ConfigError::UnsupportedExtension),
+        },
     };
 
     Ok(Config {
@@ -53,6 +56,7 @@ pub enum ConfigError {
     InvalidFileName,
     StartUpperCase,
     MissingExtension,
+    UnsupportedExtension,
 }
 
 impl fmt::Display for ConfigError {
@@ -62,6 +66,7 @@ impl fmt::Display for ConfigError {
             ConfigError::InvalidFileName => "source file name is invalid",
             ConfigError::StartUpperCase => "source file name must start with upper case letter",
             ConfigError::MissingExtension => "missing file extension",
+            ConfigError::UnsupportedExtension => "unsupported file extension",
         };
         write!(f, "config error: {}", err)?;
         Ok(())
@@ -101,6 +106,11 @@ mod tests {
                 name: "start_with_capital_err".to_string(),
                 args: vec!["program.asm".to_string()],
                 expected_config: Err(ConfigError::StartUpperCase),
+            },
+            TestCase {
+                name: "unsupported_extension".to_string(),
+                args: vec!["Program.rs".to_string()],
+                expected_config: Err(ConfigError::UnsupportedExtension),
             },
             TestCase {
                 name: "only_extension".to_string(),
