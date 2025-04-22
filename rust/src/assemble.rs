@@ -22,10 +22,22 @@ pub fn assemble(assembly_code: &str) -> Result<String, ParseError> {
 }
 
 #[derive(PartialEq, Debug)]
-enum AssemblyLine {
+pub enum AssemblyLine {
     Instruction(Instruction),
     LabelDeclaration(Symbol),
     Comment(String),
+}
+
+impl Into<String> for AssemblyLine {
+    fn into(self) -> String {
+        match self {
+            AssemblyLine::Comment(comment) => format!("// {}", comment),
+            AssemblyLine::Instruction(instruction) => instruction.into(),
+            AssemblyLine::LabelDeclaration(Symbol(symbol)) => {
+                format!("@{}", symbol.to_string())
+            }
+        }
+    }
 }
 
 #[derive(PartialEq, Debug)]
@@ -34,17 +46,20 @@ enum MachineInstruction {
     C(CInstruction),
 }
 
+impl MachineInstruction {
+    fn to_machine_code(self) -> String {
+        match self {
+            MachineInstruction::A(address) => u16_to_binary(address.0),
+            MachineInstruction::C(c_instruction) => c_instruction.to_machine_code(),
+        }
+    }
+}
+
 impl Into<String> for MachineInstruction {
     fn into(self) -> String {
         match self {
             MachineInstruction::A(address) => u16_to_binary(address.0),
-            MachineInstruction::C(c_instruction) => {
-                let computation: String = c_instruction.computation.into();
-                let destination: String = c_instruction.destination.into();
-                let jump: String = c_instruction.jump.into();
-
-                format!("111{}{}{}", computation, destination, jump,)
-            }
+            MachineInstruction::C(c_instruction) => c_instruction.to_machine_code(),
         }
     }
 }
@@ -52,10 +67,10 @@ impl Into<String> for MachineInstruction {
 struct SymbolTable(HashMap<Symbol, Address>);
 
 #[derive(Hash, Eq, PartialEq, Debug)]
-struct Symbol(String);
+pub struct Symbol(String);
 
 #[derive(PartialEq, Debug, Clone)]
-struct Address(u16);
+pub struct Address(pub u16);
 
 impl SymbolTable {
     fn get(&mut self, symbol: &Symbol) -> Option<&Address> {
@@ -68,26 +83,111 @@ impl SymbolTable {
 }
 
 #[derive(PartialEq, Debug)]
-enum Instruction {
+pub enum Instruction {
     A(AInstruction),
     C(CInstruction),
 }
 
+impl Into<String> for Instruction {
+    fn into(self) -> String {
+        match self {
+            Instruction::A(instruction) => instruction.into(),
+            Instruction::C(instruction) => instruction.into(),
+        }
+    }
+}
+
 #[derive(PartialEq, Debug)]
-enum AInstruction {
+pub enum AInstruction {
     Symbol(String),
     Address(u16),
 }
 
+impl Into<String> for AInstruction {
+    fn into(self) -> String {
+        match self {
+            AInstruction::Symbol(symbol) => format!("@{}", symbol).to_string(),
+            AInstruction::Address(address) => format!("@{}", address).to_string(),
+        }
+    }
+}
+
 #[derive(PartialEq, Debug)]
-struct CInstruction {
-    computation: Computation,
-    destination: Destination,
-    jump: Jump,
+pub struct CInstruction {
+    pub computation: Computation,
+    pub destination: Destination,
+    pub jump: Jump,
+}
+
+impl CInstruction {
+    fn to_machine_code(self) -> String {
+        let computation: String = self.computation.to_machine_code();
+        let destination: String = self.destination.to_machine_code();
+        let jump: String = self.jump.to_machine_code();
+
+        format!("111{}{}{}", computation, destination, jump,)
+    }
+}
+
+impl Into<String> for CInstruction {
+    fn into(self) -> String {
+        let computation: String = self.computation.into();
+        let destination: String = match self.destination {
+            Destination::Null => "".to_string(),
+            destination => {
+                let d: String = destination.into();
+                format!("{}=", d)
+            }
+        };
+        let jump: String = match self.jump {
+            Jump::Null => "".to_string(),
+            jump => {
+                let j: String = jump.into();
+                format!(";{}", j)
+            }
+        };
+
+        format!("{}{}{}", destination, computation, jump,)
+    }
 }
 
 impl Into<String> for Computation {
     fn into(self) -> String {
+        match self {
+            Computation::Zero => "0".into(),
+            Computation::One => "1".into(),
+            Computation::MinusOne => "-1".into(),
+            Computation::D => "D".into(),
+            Computation::A => "A".into(),
+            Computation::NotD => "!D".into(),
+            Computation::NotA => "!A".into(),
+            Computation::MinusD => "-D".into(),
+            Computation::MinusA => "-A".into(),
+            Computation::DPlusOne => "D+1".into(),
+            Computation::APlusOne => "A+1".into(),
+            Computation::DMinusOne => "D-1".into(),
+            Computation::AMinusOne => "A-1".into(),
+            Computation::DPlusA => "D+A".into(),
+            Computation::DMinusA => "D-A".into(),
+            Computation::AMinusD => "A-D".into(),
+            Computation::DAndA => "D&A".into(),
+            Computation::DOrA => "D|A".into(),
+            Computation::M => "M".into(),
+            Computation::NotM => "!M".into(),
+            Computation::MinusM => "-M".into(),
+            Computation::MPlusOne => "M+1".into(),
+            Computation::MMinusOne => "M-1".into(),
+            Computation::DPlusM => "D+M".into(),
+            Computation::DMinusM => "D-M".into(),
+            Computation::MMinusD => "M-D".into(),
+            Computation::DAndM => "D&M".into(),
+            Computation::DOrM => "D|M".into(),
+        }
+    }
+}
+
+impl Computation {
+    fn to_machine_code(self) -> String {
         match self {
             Computation::Zero => "0101010".into(),
             Computation::One => "0111111".into(),
@@ -124,6 +224,21 @@ impl Into<String> for Computation {
 impl Into<String> for Destination {
     fn into(self) -> String {
         match self {
+            Destination::Null => "null".into(),
+            Destination::M => "M".into(),
+            Destination::D => "D".into(),
+            Destination::DM => "DM".into(),
+            Destination::A => "A".into(),
+            Destination::AM => "AM".into(),
+            Destination::AD => "AD".into(),
+            Destination::ADM => "ADM".into(),
+        }
+    }
+}
+
+impl Destination {
+    fn to_machine_code(self) -> String {
+        match self {
             Destination::Null => "000".into(),
             Destination::M => "001".into(),
             Destination::D => "010".into(),
@@ -135,8 +250,24 @@ impl Into<String> for Destination {
         }
     }
 }
+
 impl Into<String> for Jump {
     fn into(self) -> String {
+        match self {
+            Jump::Null => "null".into(),
+            Jump::JGT => "JGT".into(),
+            Jump::JEQ => "JEQ".into(),
+            Jump::JGE => "JGE".into(),
+            Jump::JLT => "JLT".into(),
+            Jump::JNE => "JNE".into(),
+            Jump::JLE => "JLE".into(),
+            Jump::JMP => "JMP".into(),
+        }
+    }
+}
+
+impl Jump {
+    fn to_machine_code(self) -> String {
         match self {
             Jump::Null => "000".into(),
             Jump::JGT => "001".into(),
@@ -151,7 +282,7 @@ impl Into<String> for Jump {
 }
 
 #[derive(PartialEq, Debug)]
-enum Computation {
+pub enum Computation {
     Zero,
     One,
     MinusOne,
@@ -183,7 +314,7 @@ enum Computation {
 }
 
 #[derive(PartialEq, Debug)]
-enum Destination {
+pub enum Destination {
     Null,
     M,
     D,
@@ -195,7 +326,7 @@ enum Destination {
 }
 
 #[derive(PartialEq, Debug)]
-enum Jump {
+pub enum Jump {
     Null,
     JGT,
     JEQ,
