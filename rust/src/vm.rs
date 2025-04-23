@@ -94,15 +94,13 @@ mod tests {
     #[test]
     fn test_push() -> Result<(), Box<dyn error::Error>> {
         struct TestCase {
-            name: String,
-            vm_commands: String,
+            command: String,
             expected_assembly: String,
         }
 
         let test_cases = vec![
             TestCase {
-                name: "push constant 7".to_string(),
-                vm_commands: "push constant 7".to_string(),
+                command: "push constant 7".to_string(),
                 expected_assembly: "@7
 D=A
 @SP
@@ -115,12 +113,12 @@ M=M+1"
         ];
 
         for test_case in test_cases {
-            let assembly = translate(&test_case.vm_commands)?;
+            let assembly = translate(&test_case.command)?;
 
             assert_eq!(
                 test_case.expected_assembly, assembly,
                 "{} failed: expected {}, got {}",
-                test_case.name, test_case.expected_assembly, assembly,
+                test_case.command, test_case.expected_assembly, assembly,
             );
         }
 
