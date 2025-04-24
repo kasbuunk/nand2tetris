@@ -36,15 +36,18 @@ impl error::Error for TranslateError {}
 
 enum Command {
     Push(MemorySegment),
+    Pop(MemorySegment),
 }
 
 enum MemorySegment {
     Constant(u16),
+    Local(u16),
 }
 
 fn parse_line(line: &str) -> Result<Command, TranslateError> {
     let command = match line {
-        command if command.starts_with("push") => Command::Push(MemorySegment::Constant(0)),
+        command if command.starts_with("push") => Command::Push(MemorySegment::Constant(7)),
+        command if command.starts_with("pop") => Command::Pop(MemorySegment::Local(2)),
         _ => todo!(),
     };
 
@@ -53,37 +56,134 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
 
 fn to_assembly(command: Command) -> Vec<assemble::AssemblyLine> {
     let sp = "SP".to_string();
-    vec![
-        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Address(7),
-        )),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::A,
-            destination: assemble::Destination::D,
-            jump: assemble::Jump::Null,
-        })),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Symbol(sp.clone()),
-        )),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::M,
-            destination: assemble::Destination::A,
-            jump: assemble::Jump::Null,
-        })),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::D,
-            destination: assemble::Destination::M,
-            jump: assemble::Jump::Null,
-        })),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Symbol(sp),
-        )),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::MPlusOne,
-            destination: assemble::Destination::M,
-            jump: assemble::Jump::Null,
-        })),
-    ]
+    let lcl = "LCL".to_string();
+
+    match command {
+        Command::Push(MemorySegment::Constant(x)) => {
+            vec![
+                assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                    assemble::AInstruction::Address(x),
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::A,
+                        destination: assemble::Destination::D,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                    assemble::AInstruction::Symbol(sp.clone()),
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::M,
+                        destination: assemble::Destination::A,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::D,
+                        destination: assemble::Destination::M,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                    assemble::AInstruction::Symbol(sp),
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::MPlusOne,
+                        destination: assemble::Destination::M,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+            ]
+        }
+        Command::Pop(MemorySegment::Local(x)) => {
+            vec![
+                // Store address LCL+2 in @SP.
+                assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                    assemble::AInstruction::Address(x),
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::A,
+                        destination: assemble::Destination::D,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                    assemble::AInstruction::Symbol(lcl),
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::DPlusM,
+                        destination: assemble::Destination::D,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                    assemble::AInstruction::Symbol(sp.clone()),
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::M,
+                        destination: assemble::Destination::A,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::D,
+                        destination: assemble::Destination::M,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+                // Store popped value in D.
+                assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                    assemble::AInstruction::Symbol(sp),
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::MMinusOne,
+                        destination: assemble::Destination::AM,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::M,
+                        destination: assemble::Destination::D,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::APlusOne,
+                        destination: assemble::Destination::A,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+                // Store D in LCL+2.
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::M,
+                        destination: assemble::Destination::A,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::D,
+                        destination: assemble::Destination::M,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+            ]
+        }
+        _ => todo!(),
+    }
 }
 
 #[cfg(test)]
@@ -109,7 +209,24 @@ M=D
 @SP
 M=M+1"
                     .to_string(),
-            }, //
+            },
+            TestCase {
+                command: "pop local 2".to_string(),
+                expected_assembly: "@2
+D=A
+@LCL
+D=D+M
+@SP
+A=M
+M=D
+@SP
+AM=M-1
+D=M
+A=A+1
+A=M
+M=D"
+                .to_string(),
+            },
         ];
 
         for test_case in test_cases {
