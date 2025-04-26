@@ -46,15 +46,6 @@ enum MachineInstruction {
     C(CInstruction),
 }
 
-impl MachineInstruction {
-    fn to_machine_code(self) -> String {
-        match self {
-            MachineInstruction::A(address) => u16_to_binary(address.0),
-            MachineInstruction::C(c_instruction) => c_instruction.to_machine_code(),
-        }
-    }
-}
-
 impl Into<String> for MachineInstruction {
     fn into(self) -> String {
         match self {

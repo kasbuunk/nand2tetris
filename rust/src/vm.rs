@@ -29,7 +29,6 @@ pub fn translate(input: &str) -> Result<String, TranslateError> {
 
 #[derive(Debug)]
 pub enum TranslateError {
-    EmptyLine,
     Invalid,
 }
 
@@ -43,24 +42,25 @@ impl error::Error for TranslateError {}
 
 #[derive(Debug)]
 enum Command {
-    Push(MemorySegment),
+    Push(PushArg),
     Pop(MemorySegment),
 }
 
 #[derive(Debug)]
 enum MemorySegment {
-    // TODO: should not contain constant, this is only for push command.
-    Constant(u16),
     Local(u16),
     Arg(u16),
+}
+
+#[derive(Debug)]
+enum PushArg {
+    Constant(u16),
+    MemorySegment(MemorySegment),
 }
 
 fn parse_line(line: &str) -> Result<Command, TranslateError> {
     let push = "push";
     let pop = "pop";
-    let constant = "constant";
-    let local = "local";
-    let arg = "arg";
 
     let words: Vec<&str> = line.split(" ").collect();
 
@@ -78,53 +78,123 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
         (_, _, None) => {
             return Err(TranslateError::Invalid);
         }
-        (Some(cmd), Some(segment), Some(offset)) => {
-            let n = offset.parse::<u16>().unwrap();
-            let segment = match segment {
-                segment if *segment == local => MemorySegment::Local(n),
-                segment if *segment == arg => MemorySegment::Arg(n),
-                segment if *segment == constant => MemorySegment::Constant(n),
-                _ => {
-                    return Err(TranslateError::Invalid);
-                }
-            };
-            match cmd {
-                cmd if *cmd == push => Command::Push(segment),
-                cmd if *cmd == pop => Command::Pop(segment),
-                _ => {
-                    return Err(TranslateError::Invalid);
-                }
+        (Some(cmd), Some(segment), Some(offset)) => match cmd {
+            cmd if *cmd == push => Command::Push(parse_push_operands(segment, offset)?),
+            cmd if *cmd == pop => Command::Pop(parse_pop_operands(segment, offset)?),
+            _ => {
+                return Err(TranslateError::Invalid);
             }
-        }
+        },
     };
 
     Ok(command)
+}
+
+fn parse_push_operands(segment: &str, offset: &str) -> Result<PushArg, TranslateError> {
+    let constant = "constant";
+    let local = "local";
+    let arg = "arg";
+
+    let n = offset.parse::<u16>().unwrap();
+    let push_operand = match segment {
+        segment if segment == local => PushArg::MemorySegment(MemorySegment::Local(n)),
+        segment if segment == arg => PushArg::MemorySegment(MemorySegment::Arg(n)),
+        segment if segment == constant => PushArg::Constant(n),
+        _ => {
+            return Err(TranslateError::Invalid);
+        }
+    };
+
+    Ok(push_operand)
+}
+
+fn parse_pop_operands(segment: &str, offset: &str) -> Result<MemorySegment, TranslateError> {
+    let local = "local";
+    let arg = "arg";
+
+    let n = offset.parse::<u16>().unwrap();
+    let segment = match segment {
+        segment if segment == local => MemorySegment::Local(n),
+        segment if segment == arg => MemorySegment::Arg(n),
+        _ => {
+            return Err(TranslateError::Invalid);
+        }
+    };
+
+    Ok(segment)
 }
 
 fn to_assembly(command: Command) -> Vec<assemble::AssemblyLine> {
     match command {
         Command::Push(memory_segment) => push(memory_segment),
         Command::Pop(memory_segment) => pop(memory_segment),
-        s => panic!("{:?}", s),
     }
 }
 
-fn push(memory_segment: MemorySegment) -> Vec<assemble::AssemblyLine> {
-    let x = match memory_segment {
-        MemorySegment::Constant(n) => n,
-        MemorySegment::Local(n) => n,
-        MemorySegment::Arg(n) => n,
+fn push(push_arg: PushArg) -> Vec<assemble::AssemblyLine> {
+    // Determine the instructions to load the data in the D-register.
+    let load_instructions = match push_arg {
+        PushArg::MemorySegment(segment) => {
+            let (segment, offset) = match segment {
+                MemorySegment::Local(_) => todo!(), // TODO: test me.
+                MemorySegment::Arg(n) => (ARG, n),
+            };
+
+            vec![
+                assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                    assemble::AInstruction::Symbol(String::from(segment)),
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::M,
+                        destination: assemble::Destination::A,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::A,
+                        destination: assemble::Destination::D,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                    assemble::AInstruction::Address(offset),
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::DPlusA,
+                        destination: assemble::Destination::A,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::M,
+                        destination: assemble::Destination::D,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+            ]
+        }
+        PushArg::Constant(number) => {
+            vec![
+                assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                    assemble::AInstruction::Address(number),
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::A,
+                        destination: assemble::Destination::D,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+            ]
+        }
     };
 
-    vec![
-        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Address(x),
-        )),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::A,
-            destination: assemble::Destination::D,
-            jump: assemble::Jump::Null,
-        })),
+    // Determine the instructions to push the D-register's content onto the stack.
+    let push_instructions = vec![
         assemble::AssemblyLine::Instruction(assemble::Instruction::A(
             assemble::AInstruction::Symbol(SP.to_string()),
         )),
@@ -146,14 +216,18 @@ fn push(memory_segment: MemorySegment) -> Vec<assemble::AssemblyLine> {
             destination: assemble::Destination::M,
             jump: assemble::Jump::Null,
         })),
-    ]
+    ];
+
+    load_instructions
+        .into_iter()
+        .chain(push_instructions.into_iter())
+        .collect()
 }
 
 fn pop(memory_segment: MemorySegment) -> Vec<assemble::AssemblyLine> {
     let (symbol, offset) = match memory_segment {
         MemorySegment::Local(offset) => (LCL, offset),
         MemorySegment::Arg(offset) => (ARG, offset),
-        MemorySegment::Constant(_) => panic!("unexpected constant pop"),
     };
 
     vec![
@@ -233,6 +307,21 @@ mod tests {
         }
 
         let test_cases = vec![
+            TestCase {
+                command: "push arg 3".to_string(),
+                expected_assembly: "@ARG
+A=M
+D=A
+@3
+A=D+A
+D=M
+@SP
+A=M
+M=D
+@SP
+M=M+1"
+                    .to_string(),
+            },
             TestCase {
                 command: "push constant 7".to_string(),
                 expected_assembly: "@7
