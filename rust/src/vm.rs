@@ -33,8 +33,8 @@ pub enum TranslateError {
 }
 
 impl fmt::Display for TranslateError {
-    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 
@@ -136,8 +136,8 @@ fn push(push_arg: PushArg) -> Vec<assemble::AssemblyLine> {
     let load_instructions = match push_arg {
         PushArg::MemorySegment(segment) => {
             let (segment, offset) = match segment {
-                MemorySegment::Local(_) => todo!(), // TODO: test me.
-                MemorySegment::Arg(n) => (ARG, n),
+                MemorySegment::Local(offset) => (LCL, offset),
+                MemorySegment::Arg(offset) => (ARG, offset),
             };
 
             vec![
@@ -313,6 +313,21 @@ mod tests {
 A=M
 D=A
 @3
+A=D+A
+D=M
+@SP
+A=M
+M=D
+@SP
+M=M+1"
+                    .to_string(),
+            },
+            TestCase {
+                command: "push local 8".to_string(),
+                expected_assembly: "@LCL
+A=M
+D=A
+@8
 A=D+A
 D=M
 @SP
