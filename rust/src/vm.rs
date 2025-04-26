@@ -309,33 +309,11 @@ mod tests {
         let test_cases = vec![
             TestCase {
                 command: "push arg 3".to_string(),
-                expected_assembly: "@ARG
-A=M
-D=A
-@3
-A=D+A
-D=M
-@SP
-A=M
-M=D
-@SP
-M=M+1"
-                    .to_string(),
+                expected_assembly: push_memory(ARG, 3),
             },
             TestCase {
                 command: "push local 8".to_string(),
-                expected_assembly: "@LCL
-A=M
-D=A
-@8
-A=D+A
-D=M
-@SP
-A=M
-M=D
-@SP
-M=M+1"
-                    .to_string(),
+                expected_assembly: push_memory(LCL, 8),
             },
             TestCase {
                 command: "push constant 7".to_string(),
@@ -430,5 +408,22 @@ M=M+1
             "simple_add", expected_output, output,
         );
         Ok(())
+    }
+
+    fn push_memory(segment: &str, offset: u16) -> String {
+        format!(
+            "@{}
+A=M
+D=A
+@{}
+A=D+A
+D=M
+@SP
+A=M
+M=D
+@SP
+M=M+1",
+            segment, offset
+        )
     }
 }
