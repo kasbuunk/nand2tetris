@@ -193,13 +193,13 @@ fn push(push_arg: PushArg, program_name: &str) -> Vec<assemble::AssemblyLine> {
             let dereference_without_offset = offset == 0;
 
             if dereference_without_offset {
-                dereference_symbol(symbol)
+                load_symbol(symbol)
             } else {
-                dereference_symbol_with_offset(symbol, offset)
+                load_symbol_with_offset(symbol, offset)
             }
         }
         PushArg::Constant(number) => load_constant(number),
-        PushArg::Static(n) => dereference_symbol(&format!("{}.{}", program_name, n)),
+        PushArg::Static(n) => load_symbol(&format!("{}.{}", program_name, n)),
         PushArg::Pointer(n) => match n {
             0 => return push(PushArg::MemorySegment(MemorySegment::This(0)), program_name),
             1 => return push(PushArg::MemorySegment(MemorySegment::That(0)), program_name),
@@ -218,12 +218,12 @@ fn push(push_arg: PushArg, program_name: &str) -> Vec<assemble::AssemblyLine> {
                 _ => todo!(),
             };
 
-            dereference_symbol(symbol)
+            load_symbol(symbol)
         }
     };
 
     // Determine the instructions to push the D-register's content onto the stack.
-    let push_instructions = push_d_onto_stack();
+    let push_instructions = push_to_stack();
 
     load_instructions
         .into_iter()
@@ -359,7 +359,7 @@ fn pop(pop_arg: PopArg) -> Vec<assemble::AssemblyLine> {
     store_in_sp.into_iter().chain(load_into_d).collect()
 }
 
-fn dereference_symbol(symbol: &str) -> Vec<assemble::AssemblyLine> {
+fn load_symbol(symbol: &str) -> Vec<assemble::AssemblyLine> {
     vec![
         assemble::AssemblyLine::Instruction(assemble::Instruction::A(
             assemble::AInstruction::Symbol(String::from(symbol)),
@@ -377,7 +377,7 @@ fn dereference_symbol(symbol: &str) -> Vec<assemble::AssemblyLine> {
     ]
 }
 
-fn dereference_symbol_with_offset(symbol: &str, offset: u16) -> Vec<assemble::AssemblyLine> {
+fn load_symbol_with_offset(symbol: &str, offset: u16) -> Vec<assemble::AssemblyLine> {
     vec![
         assemble::AssemblyLine::Instruction(assemble::Instruction::A(
             assemble::AInstruction::Symbol(String::from(symbol)),
@@ -421,7 +421,7 @@ fn load_constant(n: u16) -> Vec<assemble::AssemblyLine> {
     ]
 }
 
-fn push_d_onto_stack() -> Vec<assemble::AssemblyLine> {
+fn push_to_stack() -> Vec<assemble::AssemblyLine> {
     vec![
         assemble::AssemblyLine::Instruction(assemble::Instruction::A(
             assemble::AInstruction::Symbol(SP.to_string()),
