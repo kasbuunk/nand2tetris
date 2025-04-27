@@ -128,11 +128,13 @@ fn parse_push_operands(segment: &str, offset: &str) -> Result<PushArg, Translate
 fn parse_pop_operands(segment: &str, offset: &str) -> Result<MemorySegment, TranslateError> {
     let local = "local";
     let arg = "arg";
+    let this = "this";
 
     let n = offset.parse::<u16>().unwrap();
     let segment = match segment {
         segment if segment == arg => MemorySegment::Arg(n),
         segment if segment == local => MemorySegment::Local(n),
+        segment if segment == this => MemorySegment::This(n),
         _ => {
             return Err(TranslateError::Invalid);
         }
@@ -358,6 +360,10 @@ mod tests {
             TestCase {
                 command: "push pointer 1".to_string(),
                 expected_assembly: push_memory(THAT, 0),
+            },
+            TestCase {
+                command: "pop this 10".to_string(),
+                expected_assembly: pop_memory(THIS, 10),
             },
             TestCase {
                 command: "push constant 7".to_string(),
