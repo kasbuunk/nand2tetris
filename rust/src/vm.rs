@@ -183,7 +183,7 @@ fn push(push_arg: PushArg, program_name: &str) -> Vec<assemble::AssemblyLine> {
     // Determine the instructions to load the data in the D-register.
     let load_instructions = match push_arg {
         PushArg::MemorySegment(segment) => {
-            let (segment, offset) = match segment {
+            let (symbol, offset) = match segment {
                 MemorySegment::Arg(offset) => (ARG, offset),
                 MemorySegment::Local(offset) => (LCL, offset),
                 MemorySegment::This(offset) => (THIS, offset),
@@ -193,62 +193,9 @@ fn push(push_arg: PushArg, program_name: &str) -> Vec<assemble::AssemblyLine> {
             let dereference_without_offset = offset == 0;
 
             if dereference_without_offset {
-                vec![
-                    assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-                        assemble::AInstruction::Symbol(String::from(segment)),
-                    )),
-                    assemble::AssemblyLine::Instruction(assemble::Instruction::C(
-                        assemble::CInstruction {
-                            computation: assemble::Computation::M,
-                            destination: assemble::Destination::A,
-                            jump: assemble::Jump::Null,
-                        },
-                    )),
-                    assemble::AssemblyLine::Instruction(assemble::Instruction::C(
-                        assemble::CInstruction {
-                            computation: assemble::Computation::M,
-                            destination: assemble::Destination::D,
-                            jump: assemble::Jump::Null,
-                        },
-                    )),
-                ]
+                dereference_symbol(symbol)
             } else {
-                vec![
-                    assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-                        assemble::AInstruction::Symbol(String::from(segment)),
-                    )),
-                    assemble::AssemblyLine::Instruction(assemble::Instruction::C(
-                        assemble::CInstruction {
-                            computation: assemble::Computation::M,
-                            destination: assemble::Destination::A,
-                            jump: assemble::Jump::Null,
-                        },
-                    )),
-                    assemble::AssemblyLine::Instruction(assemble::Instruction::C(
-                        assemble::CInstruction {
-                            computation: assemble::Computation::A,
-                            destination: assemble::Destination::D,
-                            jump: assemble::Jump::Null,
-                        },
-                    )),
-                    assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-                        assemble::AInstruction::Address(offset),
-                    )),
-                    assemble::AssemblyLine::Instruction(assemble::Instruction::C(
-                        assemble::CInstruction {
-                            computation: assemble::Computation::DPlusA,
-                            destination: assemble::Destination::A,
-                            jump: assemble::Jump::Null,
-                        },
-                    )),
-                    assemble::AssemblyLine::Instruction(assemble::Instruction::C(
-                        assemble::CInstruction {
-                            computation: assemble::Computation::M,
-                            destination: assemble::Destination::D,
-                            jump: assemble::Jump::Null,
-                        },
-                    )),
-                ]
+                dereference_symbol_with_offset(symbol, offset)
             }
         }
         PushArg::Constant(number) => {
@@ -265,27 +212,7 @@ fn push(push_arg: PushArg, program_name: &str) -> Vec<assemble::AssemblyLine> {
                 )),
             ]
         }
-        PushArg::Static(n) => {
-            vec![
-                assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-                    assemble::AInstruction::Symbol(format!("{}.{}", program_name, n)),
-                )),
-                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
-                    assemble::CInstruction {
-                        computation: assemble::Computation::M,
-                        destination: assemble::Destination::A,
-                        jump: assemble::Jump::Null,
-                    },
-                )),
-                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
-                    assemble::CInstruction {
-                        computation: assemble::Computation::M,
-                        destination: assemble::Destination::D,
-                        jump: assemble::Jump::Null,
-                    },
-                )),
-            ]
-        }
+        PushArg::Static(n) => dereference_symbol(&format!("{}.{}", program_name, n)),
         PushArg::Pointer(n) => match n {
             0 => return push(PushArg::MemorySegment(MemorySegment::This(0)), program_name),
             1 => return push(PushArg::MemorySegment(MemorySegment::That(0)), program_name),
@@ -304,30 +231,70 @@ fn push(push_arg: PushArg, program_name: &str) -> Vec<assemble::AssemblyLine> {
                 _ => todo!(),
             };
 
-            vec![
-                assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-                    assemble::AInstruction::Symbol(String::from(symbol)),
-                )),
-                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
-                    assemble::CInstruction {
-                        computation: assemble::Computation::M,
-                        destination: assemble::Destination::A,
-                        jump: assemble::Jump::Null,
-                    },
-                )),
-                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
-                    assemble::CInstruction {
-                        computation: assemble::Computation::M,
-                        destination: assemble::Destination::D,
-                        jump: assemble::Jump::Null,
-                    },
-                )),
-            ]
+            dereference_symbol(symbol)
         }
     };
 
     // Determine the instructions to push the D-register's content onto the stack.
-    let push_instructions = vec![
+    let push_instructions = push_d_onto_stack();
+
+    load_instructions
+        .into_iter()
+        .chain(push_instructions.into_iter())
+        .collect()
+}
+
+fn dereference_symbol(symbol: &str) -> Vec<assemble::AssemblyLine> {
+    vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(String::from(symbol)),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+    ]
+}
+
+fn dereference_symbol_with_offset(symbol: &str, offset: u16) -> Vec<assemble::AssemblyLine> {
+    vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(String::from(symbol)),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::A,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Address(offset),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::DPlusA,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+    ]
+}
+
+fn push_d_onto_stack() -> Vec<assemble::AssemblyLine> {
+    vec![
         assemble::AssemblyLine::Instruction(assemble::Instruction::A(
             assemble::AInstruction::Symbol(SP.to_string()),
         )),
@@ -349,12 +316,7 @@ fn push(push_arg: PushArg, program_name: &str) -> Vec<assemble::AssemblyLine> {
             destination: assemble::Destination::M,
             jump: assemble::Jump::Null,
         })),
-    ];
-
-    load_instructions
-        .into_iter()
-        .chain(push_instructions.into_iter())
-        .collect()
+    ]
 }
 
 fn pop(pop_arg: PopArg) -> Vec<assemble::AssemblyLine> {
