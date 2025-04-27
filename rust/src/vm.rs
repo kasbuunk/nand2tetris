@@ -198,20 +198,7 @@ fn push(push_arg: PushArg, program_name: &str) -> Vec<assemble::AssemblyLine> {
                 dereference_symbol_with_offset(symbol, offset)
             }
         }
-        PushArg::Constant(number) => {
-            vec![
-                assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-                    assemble::AInstruction::Address(number),
-                )),
-                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
-                    assemble::CInstruction {
-                        computation: assemble::Computation::A,
-                        destination: assemble::Destination::D,
-                        jump: assemble::Jump::Null,
-                    },
-                )),
-            ]
-        }
+        PushArg::Constant(number) => load_constant(number),
         PushArg::Static(n) => dereference_symbol(&format!("{}.{}", program_name, n)),
         PushArg::Pointer(n) => match n {
             0 => return push(PushArg::MemorySegment(MemorySegment::This(0)), program_name),
@@ -242,81 +229,6 @@ fn push(push_arg: PushArg, program_name: &str) -> Vec<assemble::AssemblyLine> {
         .into_iter()
         .chain(push_instructions.into_iter())
         .collect()
-}
-
-fn dereference_symbol(symbol: &str) -> Vec<assemble::AssemblyLine> {
-    vec![
-        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Symbol(String::from(symbol)),
-        )),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::M,
-            destination: assemble::Destination::A,
-            jump: assemble::Jump::Null,
-        })),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::M,
-            destination: assemble::Destination::D,
-            jump: assemble::Jump::Null,
-        })),
-    ]
-}
-
-fn dereference_symbol_with_offset(symbol: &str, offset: u16) -> Vec<assemble::AssemblyLine> {
-    vec![
-        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Symbol(String::from(symbol)),
-        )),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::M,
-            destination: assemble::Destination::A,
-            jump: assemble::Jump::Null,
-        })),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::A,
-            destination: assemble::Destination::D,
-            jump: assemble::Jump::Null,
-        })),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Address(offset),
-        )),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::DPlusA,
-            destination: assemble::Destination::A,
-            jump: assemble::Jump::Null,
-        })),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::M,
-            destination: assemble::Destination::D,
-            jump: assemble::Jump::Null,
-        })),
-    ]
-}
-
-fn push_d_onto_stack() -> Vec<assemble::AssemblyLine> {
-    vec![
-        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Symbol(SP.to_string()),
-        )),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::M,
-            destination: assemble::Destination::A,
-            jump: assemble::Jump::Null,
-        })),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::D,
-            destination: assemble::Destination::M,
-            jump: assemble::Jump::Null,
-        })),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Symbol(SP.to_string()),
-        )),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::MPlusOne,
-            destination: assemble::Destination::M,
-            jump: assemble::Jump::Null,
-        })),
-    ]
 }
 
 fn pop(pop_arg: PopArg) -> Vec<assemble::AssemblyLine> {
@@ -445,6 +357,94 @@ fn pop(pop_arg: PopArg) -> Vec<assemble::AssemblyLine> {
     ];
 
     store_in_sp.into_iter().chain(load_into_d).collect()
+}
+
+fn dereference_symbol(symbol: &str) -> Vec<assemble::AssemblyLine> {
+    vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(String::from(symbol)),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+    ]
+}
+
+fn dereference_symbol_with_offset(symbol: &str, offset: u16) -> Vec<assemble::AssemblyLine> {
+    vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(String::from(symbol)),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::A,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Address(offset),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::DPlusA,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+    ]
+}
+
+fn load_constant(n: u16) -> Vec<assemble::AssemblyLine> {
+    vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Address(n),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::A,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+    ]
+}
+
+fn push_d_onto_stack() -> Vec<assemble::AssemblyLine> {
+    vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(SP.to_string()),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::D,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(SP.to_string()),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::MPlusOne,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        })),
+    ]
 }
 
 #[cfg(test)]
