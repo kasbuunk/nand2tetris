@@ -342,7 +342,17 @@ fn pop(pop_arg: PopArg) -> Vec<assemble::AssemblyLine> {
             1 => return pop(PopArg::MemorySegment(MemorySegment::That(0))),
             _ => todo!(), // TODO: handle error.
         },
-        PopArg::Temp(n) => (R5, 0),
+        PopArg::Temp(n) => match n {
+            0 => (R5, 0),
+            1 => (R6, 0),
+            2 => (R7, 0),
+            3 => (R8, 0),
+            4 => (R9, 0),
+            5 => (R10, 0),
+            6 => (R11, 0),
+            7 => (R12, 0),
+            n => panic!("unexpected temp: {}", n),
+        },
     };
 
     let dereference_with_offset = offset != 0;
@@ -518,10 +528,6 @@ mod tests {
                 expected_assembly: push_dereferenced_symbol_pointer(R12),
             },
             TestCase {
-                command: "pop temp 0".to_string(),
-                expected_assembly: pop_dereferenced_symbol_pointer(R5),
-            },
-            TestCase {
                 command: "push constant 7".to_string(),
                 expected_assembly: "@7
 D=A
@@ -555,6 +561,38 @@ M=M+1"
             TestCase {
                 command: "pop pointer 1".to_string(),
                 expected_assembly: pop_dereferenced_symbol_pointer(THAT),
+            },
+            TestCase {
+                command: "pop temp 0".to_string(),
+                expected_assembly: pop_dereferenced_symbol_pointer(R5),
+            },
+            TestCase {
+                command: "pop temp 1".to_string(),
+                expected_assembly: pop_dereferenced_symbol_pointer(R6),
+            },
+            TestCase {
+                command: "pop temp 2".to_string(),
+                expected_assembly: pop_dereferenced_symbol_pointer(R7),
+            },
+            TestCase {
+                command: "pop temp 3".to_string(),
+                expected_assembly: pop_dereferenced_symbol_pointer(R8),
+            },
+            TestCase {
+                command: "pop temp 4".to_string(),
+                expected_assembly: pop_dereferenced_symbol_pointer(R9),
+            },
+            TestCase {
+                command: "pop temp 5".to_string(),
+                expected_assembly: pop_dereferenced_symbol_pointer(R10),
+            },
+            TestCase {
+                command: "pop temp 6".to_string(),
+                expected_assembly: pop_dereferenced_symbol_pointer(R11),
+            },
+            TestCase {
+                command: "pop temp 7".to_string(),
+                expected_assembly: pop_dereferenced_symbol_pointer(R12),
             },
         ];
 
