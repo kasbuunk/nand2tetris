@@ -8,6 +8,7 @@ static ARG: &str = "ARG";
 static LCL: &str = "LCL";
 static THIS: &str = "THIS";
 static THAT: &str = "THAT";
+static R5: &str = "R5";
 
 pub fn translate(input: &str) -> Result<String, TranslateError> {
     let parsed_vm_lines: Vec<Command> = input
@@ -228,9 +229,34 @@ fn push(push_arg: PushArg) -> Vec<assemble::AssemblyLine> {
         PushArg::Pointer(n) => match n {
             0 => return push(PushArg::MemorySegment(MemorySegment::This(0))),
             1 => return push(PushArg::MemorySegment(MemorySegment::That(0))),
-            n => todo!(), // TODO: handle error.
+            _ => todo!(), // TODO: handle error.
         },
-        PushArg::Temp(_) => todo!(),
+        PushArg::Temp(offset) => {
+            let symbol = match offset {
+                0 => "R5",
+                _ => todo!(),
+            };
+
+            vec![
+                assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                    assemble::AInstruction::Symbol(String::from(symbol)),
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::M,
+                        destination: assemble::Destination::A,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::M,
+                        destination: assemble::Destination::D,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+            ]
+        }
     };
 
     // Determine the instructions to push the D-register's content onto the stack.
@@ -358,43 +384,31 @@ mod tests {
         let test_cases = vec![
             TestCase {
                 command: "push arg 3".to_string(),
-                expected_assembly: push_memory(ARG, 3),
+                expected_assembly: push_with_offset(ARG, 3),
             },
             TestCase {
                 command: "push local 8".to_string(),
-                expected_assembly: push_memory(LCL, 8),
+                expected_assembly: push_with_offset(LCL, 8),
             },
             TestCase {
                 command: "push this 2".to_string(),
-                expected_assembly: push_memory(THIS, 2),
+                expected_assembly: push_with_offset(THIS, 2),
             },
             TestCase {
                 command: "push that 2".to_string(),
-                expected_assembly: push_memory(THAT, 2),
+                expected_assembly: push_with_offset(THAT, 2),
             },
             TestCase {
                 command: "push pointer 0".to_string(),
-                expected_assembly: push_memory(THIS, 0),
+                expected_assembly: push_with_offset(THIS, 0),
             },
             TestCase {
                 command: "push pointer 1".to_string(),
-                expected_assembly: push_memory(THAT, 0),
+                expected_assembly: push_with_offset(THAT, 0),
             },
             TestCase {
-                command: "pop this 10".to_string(),
-                expected_assembly: pop_memory(THIS, 10),
-            },
-            TestCase {
-                command: "pop that 8".to_string(),
-                expected_assembly: pop_memory(THAT, 8),
-            },
-            TestCase {
-                command: "pop pointer 0".to_string(),
-                expected_assembly: pop_memory(THIS, 0),
-            },
-            TestCase {
-                command: "pop pointer 1".to_string(),
-                expected_assembly: pop_memory(THAT, 0),
+                command: "push temp 0".to_string(),
+                expected_assembly: push_dereferenced_symbol_pointer(R5),
             },
             TestCase {
                 command: "push constant 7".to_string(),
@@ -409,11 +423,27 @@ M=M+1"
             },
             TestCase {
                 command: "pop local 2".to_string(),
-                expected_assembly: pop_memory(LCL, 2).to_string(),
+                expected_assembly: pop_with_offset(LCL, 2).to_string(),
             },
             TestCase {
                 command: "pop arg 1".to_string(),
-                expected_assembly: pop_memory(ARG, 1).to_string(),
+                expected_assembly: pop_with_offset(ARG, 1).to_string(),
+            },
+            TestCase {
+                command: "pop this 10".to_string(),
+                expected_assembly: pop_with_offset(THIS, 10),
+            },
+            TestCase {
+                command: "pop that 8".to_string(),
+                expected_assembly: pop_with_offset(THAT, 8),
+            },
+            TestCase {
+                command: "pop pointer 0".to_string(),
+                expected_assembly: pop_with_offset(THIS, 0),
+            },
+            TestCase {
+                command: "pop pointer 1".to_string(),
+                expected_assembly: pop_with_offset(THAT, 0),
             },
         ];
 
@@ -465,7 +495,21 @@ M=M+1
         Ok(())
     }
 
-    fn push_memory(segment: &str, offset: u16) -> String {
+    fn push_dereferenced_symbol_pointer(symbol: &str) -> String {
+        format!(
+            "@{}
+A=M
+D=M
+@SP
+A=M
+M=D
+@SP
+M=M+1",
+            symbol
+        )
+    }
+
+    fn push_with_offset(segment: &str, offset: u16) -> String {
         format!(
             "@{}
 A=M
@@ -482,7 +526,7 @@ M=M+1",
         )
     }
 
-    fn pop_memory(segment: &str, offset: u16) -> String {
+    fn pop_with_offset(segment: &str, offset: u16) -> String {
         format!(
             "@{}
 D=A
