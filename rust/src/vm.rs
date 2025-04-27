@@ -54,6 +54,7 @@ impl error::Error for TranslateError {}
 enum Command {
     Push(PushArg),
     Pop(PopArg),
+    Add,
 }
 
 #[derive(Debug)]
@@ -84,6 +85,7 @@ enum PopArg {
 fn parse_line(line: &str) -> Result<Command, TranslateError> {
     let push = "push";
     let pop = "pop";
+    let add = "add";
 
     let words: Vec<&str> = line.split(" ").collect();
 
@@ -95,6 +97,12 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
         (None, _, _) => {
             return Err(TranslateError::Invalid);
         }
+        (Some(cmd), None, None) => match cmd {
+            cmd if *cmd == add => Command::Add,
+            _ => {
+                return Err(TranslateError::Invalid);
+            }
+        },
         (_, None, _) => {
             return Err(TranslateError::Invalid);
         }
@@ -171,7 +179,41 @@ fn to_assembly(command: Command, program_name: &str) -> Vec<assemble::AssemblyLi
     match command {
         Command::Push(memory_segment) => push(memory_segment, program_name),
         Command::Pop(memory_segment) => pop(memory_segment, program_name),
+        Command::Add => add(),
     }
+}
+
+fn add() -> Vec<assemble::AssemblyLine> {
+    vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(SP.to_string()),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::MMinusOne,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::AMinusOne,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::DPlusM,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        })),
+    ]
 }
 
 fn push(push_arg: PushArg, program_name: &str) -> Vec<assemble::AssemblyLine> {
@@ -642,6 +684,39 @@ M=M+1"
 
         for test_case in test_cases {
             let assembly = translate(test_case.program_name, &test_case.command)
+                .expect(&format!("failed: {}", &test_case.command));
+
+            assert_eq!(
+                test_case.expected_assembly, assembly,
+                "{} failed: expected {}, got {}",
+                test_case.command, test_case.expected_assembly, assembly,
+            );
+        }
+    }
+
+    #[test]
+    fn test_add() {
+        struct TestCase {
+            command: String,
+            expected_assembly: String,
+        }
+
+        let test_cases = vec![
+            //
+            TestCase {
+                command: "add".to_string(),
+                expected_assembly: "@SP
+M=M-1
+A=M
+D=M
+A=A-1
+M=D+M"
+                    .to_string(),
+            },
+        ];
+
+        for test_case in test_cases {
+            let assembly = translate("Test".to_string(), &test_case.command)
                 .expect(&format!("failed: {}", &test_case.command));
 
             assert_eq!(
