@@ -56,6 +56,7 @@ enum Command {
     Pop(PopArg),
     Add,
     Sub,
+    Neg,
     And,
     Or,
 }
@@ -90,6 +91,7 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
     let pop = "pop";
     let add = "add";
     let sub = "sub";
+    let neg = "neg";
     let and = "and";
     let or = "or";
 
@@ -106,6 +108,7 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
         (Some(cmd), None, None) => match cmd {
             cmd if *cmd == add => Command::Add,
             cmd if *cmd == sub => Command::Sub,
+            cmd if *cmd == neg => Command::Neg,
             cmd if *cmd == and => Command::And,
             cmd if *cmd == or => Command::Or,
             _ => {
@@ -189,7 +192,8 @@ fn to_assembly(command: Command, program_name: &str) -> Vec<assemble::AssemblyLi
         Command::Push(memory_segment) => push(memory_segment, program_name),
         Command::Pop(memory_segment) => pop(memory_segment, program_name),
         Command::Add => add(),
-        Command::Sub => sub(),
+        Command::Sub => subtract(),
+        Command::Neg => negate(),
         Command::And => and(),
         Command::Or => or(),
     }
@@ -201,10 +205,16 @@ fn add() -> Vec<assemble::AssemblyLine> {
     binary_operation(computation)
 }
 
-fn sub() -> Vec<assemble::AssemblyLine> {
+fn subtract() -> Vec<assemble::AssemblyLine> {
     let computation = assemble::Computation::DMinusM;
 
     binary_operation(computation)
+}
+
+fn negate() -> Vec<assemble::AssemblyLine> {
+    let computation = assemble::Computation::NotM;
+
+    unary_operation(computation)
 }
 
 fn and() -> Vec<assemble::AssemblyLine> {
@@ -236,6 +246,20 @@ fn binary_operation(computation: assemble::Computation) -> Vec<assemble::Assembl
         .collect()
 }
 
+fn unary_operation(computation: assemble::Computation) -> Vec<assemble::AssemblyLine> {
+    let to_stack_top = goto_stack_top();
+
+    let operation = vec![assemble::AssemblyLine::Instruction(
+        assemble::Instruction::C(assemble::CInstruction {
+            computation,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        }),
+    )];
+
+    to_stack_top.into_iter().chain(operation).collect()
+}
+
 // Pops the top of the stack into D, decrements the stack pointer, and loads the address of
 // the new stack top.
 fn pop_and_load() -> Vec<assemble::AssemblyLine> {
@@ -260,6 +284,19 @@ fn pop_and_load() -> Vec<assemble::AssemblyLine> {
         })),
         assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
             computation: assemble::Computation::AMinusOne,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+    ]
+}
+
+fn goto_stack_top() -> Vec<assemble::AssemblyLine> {
+    vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(SP.to_string()),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
             destination: assemble::Destination::A,
             jump: assemble::Jump::Null,
         })),
@@ -770,6 +807,13 @@ A=M
 D=M
 A=A-1
 M=D-M"
+                    .to_string(),
+            },
+            TestCase {
+                command: "neg".to_string(),
+                expected_assembly: "@SP
+A=M
+M=!M"
                     .to_string(),
             },
             TestCase {
