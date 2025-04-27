@@ -728,14 +728,12 @@ M=D+M"
     }
 
     #[test]
-    #[ignore]
     fn test_simple_add() -> Result<(), Box<dyn error::Error>> {
         let input = "
 push constant 7
 push constant 8
 add";
-        let expected_output = "
-@7
+        let expected_output = "@7
 D=A
 @SP
 A=M
@@ -749,8 +747,12 @@ A=M
 M=D
 @SP
 M=M+1
-// TODO add
-"; // TODO: implement add
+@SP
+M=M-1
+A=M
+D=M
+A=A-1
+M=D+M";
         let output = translate("SimpleAdd".to_string(), input.trim())?;
 
         assert_eq!(
