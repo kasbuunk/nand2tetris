@@ -55,6 +55,7 @@ enum Command {
     Push(PushArg),
     Pop(PopArg),
     Add,
+    Sub,
 }
 
 #[derive(Debug)]
@@ -86,6 +87,7 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
     let push = "push";
     let pop = "pop";
     let add = "add";
+    let sub = "sub";
 
     let words: Vec<&str> = line.split(" ").collect();
 
@@ -99,6 +101,7 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
         }
         (Some(cmd), None, None) => match cmd {
             cmd if *cmd == add => Command::Add,
+            cmd if *cmd == sub => Command::Sub,
             _ => {
                 return Err(TranslateError::Invalid);
             }
@@ -180,10 +183,42 @@ fn to_assembly(command: Command, program_name: &str) -> Vec<assemble::AssemblyLi
         Command::Push(memory_segment) => push(memory_segment, program_name),
         Command::Pop(memory_segment) => pop(memory_segment, program_name),
         Command::Add => add(),
+        Command::Sub => sub(),
     }
 }
 
 fn add() -> Vec<assemble::AssemblyLine> {
+    let computation = assemble::Computation::DPlusM;
+
+    binary_operation(computation)
+}
+
+fn sub() -> Vec<assemble::AssemblyLine> {
+    let computation = assemble::Computation::DMinusM;
+
+    binary_operation(computation)
+}
+
+fn binary_operation(computation: assemble::Computation) -> Vec<assemble::AssemblyLine> {
+    let pop_and_load_instructions = pop_and_load();
+
+    let operation = vec![assemble::AssemblyLine::Instruction(
+        assemble::Instruction::C(assemble::CInstruction {
+            computation,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        }),
+    )];
+
+    pop_and_load_instructions
+        .into_iter()
+        .chain(operation)
+        .collect()
+}
+
+// Pops the top of the stack into D, decrements the stack pointer, and loads the address of
+// the new stack top.
+fn pop_and_load() -> Vec<assemble::AssemblyLine> {
     vec![
         assemble::AssemblyLine::Instruction(assemble::Instruction::A(
             assemble::AInstruction::Symbol(SP.to_string()),
@@ -206,11 +241,6 @@ fn add() -> Vec<assemble::AssemblyLine> {
         assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
             computation: assemble::Computation::AMinusOne,
             destination: assemble::Destination::A,
-            jump: assemble::Jump::Null,
-        })),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::DPlusM,
-            destination: assemble::Destination::M,
             jump: assemble::Jump::Null,
         })),
     ]
@@ -695,14 +725,13 @@ M=M+1"
     }
 
     #[test]
-    fn test_add() {
+    fn test_arithmetic() {
         struct TestCase {
             command: String,
             expected_assembly: String,
         }
 
         let test_cases = vec![
-            //
             TestCase {
                 command: "add".to_string(),
                 expected_assembly: "@SP
@@ -711,6 +740,16 @@ A=M
 D=M
 A=A-1
 M=D+M"
+                    .to_string(),
+            },
+            TestCase {
+                command: "sub".to_string(),
+                expected_assembly: "@SP
+M=M-1
+A=M
+D=M
+A=A-1
+M=D-M"
                     .to_string(),
             },
         ];
