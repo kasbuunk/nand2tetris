@@ -4,8 +4,10 @@ use std::error;
 use crate::assemble;
 
 static SP: &str = "SP";
-static LCL: &str = "LCL";
 static ARG: &str = "ARG";
+static LCL: &str = "LCL";
+static THIS: &str = "THIS";
+static THAT: &str = "THAT";
 
 pub fn translate(input: &str) -> Result<String, TranslateError> {
     let parsed_vm_lines: Vec<Command> = input
@@ -48,13 +50,18 @@ enum Command {
 
 #[derive(Debug)]
 enum MemorySegment {
-    Local(u16),
     Arg(u16),
+    Local(u16),
+    This(u16),
+    That(u16),
 }
 
 #[derive(Debug)]
 enum PushArg {
     Constant(u16),
+    Static(u16),
+    Pointer(u16),
+    Temp(u16),
     MemorySegment(MemorySegment),
 }
 
@@ -92,14 +99,24 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
 
 fn parse_push_operands(segment: &str, offset: &str) -> Result<PushArg, TranslateError> {
     let constant = "constant";
-    let local = "local";
     let arg = "arg";
+    let local = "local";
+    let stat = "arg";
+    let this = "this";
+    let that = "that";
+    let pointer = "pointer";
+    let temp = "temp";
 
     let n = offset.parse::<u16>().unwrap();
     let push_operand = match segment {
-        segment if segment == local => PushArg::MemorySegment(MemorySegment::Local(n)),
-        segment if segment == arg => PushArg::MemorySegment(MemorySegment::Arg(n)),
         segment if segment == constant => PushArg::Constant(n),
+        segment if segment == arg => PushArg::MemorySegment(MemorySegment::Arg(n)),
+        segment if segment == local => PushArg::MemorySegment(MemorySegment::Local(n)),
+        segment if segment == stat => PushArg::Static(n),
+        segment if segment == this => PushArg::MemorySegment(MemorySegment::This(n)),
+        segment if segment == that => PushArg::MemorySegment(MemorySegment::That(n)),
+        segment if segment == pointer => PushArg::Pointer(n),
+        segment if segment == temp => PushArg::Temp(n),
         _ => {
             return Err(TranslateError::Invalid);
         }
@@ -114,8 +131,8 @@ fn parse_pop_operands(segment: &str, offset: &str) -> Result<MemorySegment, Tran
 
     let n = offset.parse::<u16>().unwrap();
     let segment = match segment {
-        segment if segment == local => MemorySegment::Local(n),
         segment if segment == arg => MemorySegment::Arg(n),
+        segment if segment == local => MemorySegment::Local(n),
         _ => {
             return Err(TranslateError::Invalid);
         }
@@ -136,8 +153,10 @@ fn push(push_arg: PushArg) -> Vec<assemble::AssemblyLine> {
     let load_instructions = match push_arg {
         PushArg::MemorySegment(segment) => {
             let (segment, offset) = match segment {
-                MemorySegment::Local(offset) => (LCL, offset),
                 MemorySegment::Arg(offset) => (ARG, offset),
+                MemorySegment::Local(offset) => (LCL, offset),
+                MemorySegment::This(offset) => (THIS, offset),
+                MemorySegment::That(offset) => (THAT, offset),
             };
 
             vec![
@@ -191,6 +210,9 @@ fn push(push_arg: PushArg) -> Vec<assemble::AssemblyLine> {
                 )),
             ]
         }
+        PushArg::Static(_) => todo!(),
+        PushArg::Pointer(_) => todo!(),
+        PushArg::Temp(_) => todo!(),
     };
 
     // Determine the instructions to push the D-register's content onto the stack.
@@ -226,8 +248,10 @@ fn push(push_arg: PushArg) -> Vec<assemble::AssemblyLine> {
 
 fn pop(memory_segment: MemorySegment) -> Vec<assemble::AssemblyLine> {
     let (symbol, offset) = match memory_segment {
-        MemorySegment::Local(offset) => (LCL, offset),
         MemorySegment::Arg(offset) => (ARG, offset),
+        MemorySegment::Local(offset) => (LCL, offset),
+        MemorySegment::This(offset) => (THIS, offset),
+        MemorySegment::That(offset) => (THAT, offset),
     };
 
     vec![
@@ -314,6 +338,14 @@ mod tests {
             TestCase {
                 command: "push local 8".to_string(),
                 expected_assembly: push_memory(LCL, 8),
+            },
+            TestCase {
+                command: "push this 2".to_string(),
+                expected_assembly: push_memory(THIS, 2),
+            },
+            TestCase {
+                command: "push that 2".to_string(),
+                expected_assembly: push_memory(THAT, 2),
             },
             TestCase {
                 command: "push constant 7".to_string(),
