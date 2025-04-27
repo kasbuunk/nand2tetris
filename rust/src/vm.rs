@@ -122,13 +122,13 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
 
 fn parse_push_operands(segment: &str, offset: &str) -> Result<PushArg, TranslateError> {
     let constant = "constant";
-    let arg = "arg";
     let local = "local";
-    let stat = "static";
+    let arg = "arg";
     let this = "this";
     let that = "that";
     let pointer = "pointer";
     let temp = "temp";
+    let stat = "static";
 
     let n = offset.parse::<u16>().unwrap();
     let push_operand = match segment {
@@ -155,6 +155,7 @@ fn parse_pop_operands(segment: &str, offset: &str) -> Result<PopArg, TranslateEr
     let that = "that";
     let pointer = "pointer";
     let temp = "temp";
+    let stat = "static";
 
     let n = offset.parse::<u16>().unwrap();
     let segment = match segment {
@@ -164,6 +165,7 @@ fn parse_pop_operands(segment: &str, offset: &str) -> Result<PopArg, TranslateEr
         segment if segment == that => PopArg::MemorySegment(MemorySegment::That(n)),
         segment if segment == pointer => PopArg::Pointer(n),
         segment if segment == temp => PopArg::Temp(n),
+        segment if segment == stat => PopArg::Static(n),
         _ => {
             return Err(TranslateError::Invalid);
         }
@@ -175,7 +177,7 @@ fn parse_pop_operands(segment: &str, offset: &str) -> Result<PopArg, TranslateEr
 fn to_assembly(command: Command, program_name: &str) -> Vec<assemble::AssemblyLine> {
     match command {
         Command::Push(memory_segment) => push(memory_segment, program_name),
-        Command::Pop(memory_segment) => pop(memory_segment),
+        Command::Pop(memory_segment) => pop(memory_segment, program_name),
     }
 }
 
@@ -231,27 +233,27 @@ fn push(push_arg: PushArg, program_name: &str) -> Vec<assemble::AssemblyLine> {
         .collect()
 }
 
-fn pop(pop_arg: PopArg) -> Vec<assemble::AssemblyLine> {
+fn pop(pop_arg: PopArg, program_name: &str) -> Vec<assemble::AssemblyLine> {
     let (symbol, offset) = match pop_arg {
-        PopArg::MemorySegment(MemorySegment::Arg(offset)) => (ARG, offset),
-        PopArg::MemorySegment(MemorySegment::Local(offset)) => (LCL, offset),
-        PopArg::MemorySegment(MemorySegment::This(offset)) => (THIS, offset),
-        PopArg::MemorySegment(MemorySegment::That(offset)) => (THAT, offset),
-        PopArg::Static(_) => todo!(),
+        PopArg::MemorySegment(MemorySegment::Arg(offset)) => (ARG.to_string(), offset),
+        PopArg::MemorySegment(MemorySegment::Local(offset)) => (LCL.to_string(), offset),
+        PopArg::MemorySegment(MemorySegment::This(offset)) => (THIS.to_string(), offset),
+        PopArg::MemorySegment(MemorySegment::That(offset)) => (THAT.to_string(), offset),
+        PopArg::Static(n) => (format!("{}.{}", program_name, n), 0),
         PopArg::Pointer(n) => match n {
-            0 => return pop(PopArg::MemorySegment(MemorySegment::This(0))),
-            1 => return pop(PopArg::MemorySegment(MemorySegment::That(0))),
+            0 => return pop(PopArg::MemorySegment(MemorySegment::This(0)), program_name),
+            1 => return pop(PopArg::MemorySegment(MemorySegment::That(0)), program_name),
             _ => todo!(), // TODO: handle error.
         },
         PopArg::Temp(n) => match n {
-            0 => (R5, 0),
-            1 => (R6, 0),
-            2 => (R7, 0),
-            3 => (R8, 0),
-            4 => (R9, 0),
-            5 => (R10, 0),
-            6 => (R11, 0),
-            7 => (R12, 0),
+            0 => (R5.to_string(), 0),
+            1 => (R6.to_string(), 0),
+            2 => (R7.to_string(), 0),
+            3 => (R8.to_string(), 0),
+            4 => (R9.to_string(), 0),
+            5 => (R10.to_string(), 0),
+            6 => (R11.to_string(), 0),
+            7 => (R12.to_string(), 0),
             n => panic!("unexpected temp: {}", n),
         },
     };
@@ -259,9 +261,9 @@ fn pop(pop_arg: PopArg) -> Vec<assemble::AssemblyLine> {
     let dereference_with_offset = offset != 0;
 
     let store_in_sp = if dereference_with_offset {
-        store_temporarily_to_stack_with_offset(symbol, offset)
+        store_temporarily_to_stack_with_offset(&symbol, offset)
     } else {
-        store_temporarily_to_stack(symbol)
+        store_temporarily_to_stack(&symbol)
     };
 
     let load_into_d = pop_stack();
@@ -623,11 +625,25 @@ M=M+1"
         }
 
         let test_cases = vec![
-            //
             TestCase {
                 command: "push static 0".to_string(),
                 program_name: "Test".to_string(),
                 expected_assembly: push_dereferenced_symbol_pointer("Test.0"),
+            },
+            TestCase {
+                command: "push static 1".to_string(),
+                program_name: "MyProgram".to_string(),
+                expected_assembly: push_dereferenced_symbol_pointer("MyProgram.1"),
+            },
+            TestCase {
+                command: "pop static 2".to_string(),
+                program_name: "Test".to_string(),
+                expected_assembly: pop_dereferenced_symbol_pointer("Test.2"),
+            },
+            TestCase {
+                command: "pop static 3".to_string(),
+                program_name: "MyProgram".to_string(),
+                expected_assembly: pop_dereferenced_symbol_pointer("MyProgram.3"),
             },
         ];
 
