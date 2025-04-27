@@ -47,6 +47,16 @@ pub struct Config {
     pub output_file_name: String,
 }
 
+impl Config {
+    pub fn program_name(&self) -> String {
+        self.source_file_name
+            .split(".")
+            .nth(0)
+            .expect("valid loaded programs must have an extension")
+            .to_string()
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum FileType {
     Assembly,
@@ -142,6 +152,36 @@ mod tests {
                 test_case.expected_config, config,
                 "{} failed: expected {:?}, actual {:?}",
                 test_case.name, test_case.expected_config, config,
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_program_name() -> Result<(), Box<dyn error::Error>> {
+        struct TestCase {
+            args: Vec<String>,
+            expected_program_name: String,
+        }
+        let test_cases = vec![
+            TestCase {
+                args: vec!["Program.vm".to_string()],
+                expected_program_name: "Program".to_string(),
+            },
+            TestCase {
+                args: vec!["Another.vm".to_string()],
+                expected_program_name: "Another".to_string(),
+            },
+        ];
+
+        for test_case in test_cases {
+            let config = load_config(test_case.args)?;
+            let program_name = config.program_name();
+            assert_eq!(
+                test_case.expected_program_name, program_name,
+                "failed: expected {:?}, actual {:?}",
+                test_case.expected_program_name, program_name,
             );
         }
 

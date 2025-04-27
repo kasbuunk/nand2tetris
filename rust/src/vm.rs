@@ -17,10 +17,7 @@ static R10: &str = "R10";
 static R11: &str = "R11";
 static R12: &str = "R12";
 
-pub fn translate_with_program_name(
-    program_name: &str,
-    input: &str,
-) -> Result<String, TranslateError> {
+pub fn translate(program_name: String, input: &str) -> Result<String, TranslateError> {
     let parsed_vm_lines: Vec<Command> = input
         .lines()
         .map(parse_line)
@@ -28,7 +25,7 @@ pub fn translate_with_program_name(
 
     let assembly_lines: Vec<assemble::AssemblyLine> = parsed_vm_lines
         .into_iter()
-        .map(|x| to_assembly(x, program_name))
+        .map(|x| to_assembly(x, &program_name))
         .flatten()
         .collect();
 
@@ -38,10 +35,6 @@ pub fn translate_with_program_name(
         .collect();
 
     Ok(assembly_code.join("\n"))
-}
-
-pub fn translate(input: &str) -> Result<String, TranslateError> {
-    translate_with_program_name("TODO", input)
 }
 
 #[derive(Debug)]
@@ -603,8 +596,8 @@ M=M+1"
         ];
 
         for test_case in test_cases {
-            let assembly =
-                translate(&test_case.command).expect(&format!("failed: {}", &test_case.command));
+            let assembly = translate("Test".to_string(), &test_case.command)
+                .expect(&format!("failed: {}", &test_case.command));
 
             assert_eq!(
                 test_case.expected_assembly, assembly,
@@ -648,7 +641,7 @@ M=M+1"
         ];
 
         for test_case in test_cases {
-            let assembly = translate_with_program_name(&test_case.program_name, &test_case.command)
+            let assembly = translate(test_case.program_name, &test_case.command)
                 .expect(&format!("failed: {}", &test_case.command));
 
             assert_eq!(
@@ -683,7 +676,7 @@ M=D
 M=M+1
 // TODO add
 "; // TODO: implement add
-        let output = translate(input.trim())?;
+        let output = translate("SimpleAdd".to_string(), input.trim())?;
 
         assert_eq!(
             expected_output, output,

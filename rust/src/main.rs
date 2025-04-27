@@ -40,7 +40,7 @@ fn write_output_file(path: &str, content: &[u8]) -> Result<(), Box<dyn error::Er
 fn run(config: &config::Config, input: &str) -> Result<String, Box<dyn error::Error>> {
     let output = match config.file_type {
         config::FileType::Assembly => assemble::assemble(&input)?,
-        config::FileType::VMTranslate => vm::translate(&input)?,
+        config::FileType::VMTranslate => vm::translate(config.program_name(), &input)?,
     };
 
     Ok(output)
