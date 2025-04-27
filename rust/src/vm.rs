@@ -9,6 +9,7 @@ static LCL: &str = "LCL";
 static THIS: &str = "THIS";
 static THAT: &str = "THAT";
 static R5: &str = "R5";
+static R6: &str = "R6";
 
 pub fn translate(input: &str) -> Result<String, TranslateError> {
     let parsed_vm_lines: Vec<Command> = input
@@ -233,7 +234,8 @@ fn push(push_arg: PushArg) -> Vec<assemble::AssemblyLine> {
         },
         PushArg::Temp(offset) => {
             let symbol = match offset {
-                0 => "R5",
+                0 => R5,
+                1 => R6,
                 _ => todo!(),
             };
 
@@ -409,6 +411,10 @@ mod tests {
             TestCase {
                 command: "push temp 0".to_string(),
                 expected_assembly: push_dereferenced_symbol_pointer(R5),
+            },
+            TestCase {
+                command: "push temp 1".to_string(),
+                expected_assembly: push_dereferenced_symbol_pointer(R6),
             },
             TestCase {
                 command: "push constant 7".to_string(),
