@@ -59,6 +59,7 @@ enum Command {
     Neg,
     And,
     Or,
+    Not,
 }
 
 #[derive(Debug)]
@@ -94,6 +95,7 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
     let neg = "neg";
     let and = "and";
     let or = "or";
+    let not = "not";
 
     let words: Vec<&str> = line.split(" ").collect();
 
@@ -111,6 +113,7 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
             cmd if *cmd == neg => Command::Neg,
             cmd if *cmd == and => Command::And,
             cmd if *cmd == or => Command::Or,
+            cmd if *cmd == not => Command::Not,
             _ => {
                 return Err(TranslateError::Invalid);
             }
@@ -196,6 +199,7 @@ fn to_assembly(command: Command, program_name: &str) -> Vec<assemble::AssemblyLi
         Command::Neg => negate(),
         Command::And => and(),
         Command::Or => or(),
+        Command::Not => not(),
     }
 }
 
@@ -212,6 +216,12 @@ fn subtract() -> Vec<assemble::AssemblyLine> {
 }
 
 fn negate() -> Vec<assemble::AssemblyLine> {
+    let computation = assemble::Computation::MinusM;
+
+    unary_operation(computation)
+}
+
+fn not() -> Vec<assemble::AssemblyLine> {
     let computation = assemble::Computation::NotM;
 
     unary_operation(computation)
@@ -813,7 +823,7 @@ M=D-M"
                 command: "neg".to_string(),
                 expected_assembly: "@SP
 A=M
-M=!M"
+M=-M"
                     .to_string(),
             },
             TestCase {
@@ -834,6 +844,13 @@ A=M
 D=M
 A=A-1
 M=D|M"
+                    .to_string(),
+            },
+            TestCase {
+                command: "not".to_string(),
+                expected_assembly: "@SP
+A=M
+M=!M"
                     .to_string(),
             },
         ];
