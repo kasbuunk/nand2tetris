@@ -372,37 +372,11 @@ M=M+1"
             },
             TestCase {
                 command: "pop local 2".to_string(),
-                expected_assembly: "@2
-D=A
-@LCL
-D=D+M
-@SP
-A=M
-M=D
-@SP
-AM=M-1
-D=M
-A=A+1
-A=M
-M=D"
-                .to_string(),
+                expected_assembly: pop_memory(LCL, 2).to_string(),
             },
             TestCase {
                 command: "pop arg 1".to_string(),
-                expected_assembly: "@1
-D=A
-@ARG
-D=D+M
-@SP
-A=M
-M=D
-@SP
-AM=M-1
-D=M
-A=A+1
-A=M
-M=D"
-                .to_string(),
+                expected_assembly: pop_memory(ARG, 1).to_string(),
             },
         ];
 
@@ -468,6 +442,25 @@ M=D
 @SP
 M=M+1",
             segment, offset
+        )
+    }
+
+    fn pop_memory(segment: &str, offset: u16) -> String {
+        format!(
+            "@{}
+D=A
+@{}
+D=D+M
+@SP
+A=M
+M=D
+@SP
+AM=M-1
+D=M
+A=A+1
+A=M
+M=D",
+            offset, segment
         )
     }
 }
