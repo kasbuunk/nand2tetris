@@ -183,42 +183,66 @@ fn push(push_arg: PushArg) -> Vec<assemble::AssemblyLine> {
                 MemorySegment::That(offset) => (THAT, offset),
             };
 
-            vec![
-                assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-                    assemble::AInstruction::Symbol(String::from(segment)),
-                )),
-                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
-                    assemble::CInstruction {
-                        computation: assemble::Computation::M,
-                        destination: assemble::Destination::A,
-                        jump: assemble::Jump::Null,
-                    },
-                )),
-                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
-                    assemble::CInstruction {
-                        computation: assemble::Computation::A,
-                        destination: assemble::Destination::D,
-                        jump: assemble::Jump::Null,
-                    },
-                )),
-                assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-                    assemble::AInstruction::Address(offset),
-                )),
-                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
-                    assemble::CInstruction {
-                        computation: assemble::Computation::DPlusA,
-                        destination: assemble::Destination::A,
-                        jump: assemble::Jump::Null,
-                    },
-                )),
-                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
-                    assemble::CInstruction {
-                        computation: assemble::Computation::M,
-                        destination: assemble::Destination::D,
-                        jump: assemble::Jump::Null,
-                    },
-                )),
-            ]
+            let dereference_without_offset = offset == 0;
+
+            if dereference_without_offset {
+                vec![
+                    assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                        assemble::AInstruction::Symbol(String::from(segment)),
+                    )),
+                    assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                        assemble::CInstruction {
+                            computation: assemble::Computation::M,
+                            destination: assemble::Destination::A,
+                            jump: assemble::Jump::Null,
+                        },
+                    )),
+                    assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                        assemble::CInstruction {
+                            computation: assemble::Computation::M,
+                            destination: assemble::Destination::D,
+                            jump: assemble::Jump::Null,
+                        },
+                    )),
+                ]
+            } else {
+                vec![
+                    assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                        assemble::AInstruction::Symbol(String::from(segment)),
+                    )),
+                    assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                        assemble::CInstruction {
+                            computation: assemble::Computation::M,
+                            destination: assemble::Destination::A,
+                            jump: assemble::Jump::Null,
+                        },
+                    )),
+                    assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                        assemble::CInstruction {
+                            computation: assemble::Computation::A,
+                            destination: assemble::Destination::D,
+                            jump: assemble::Jump::Null,
+                        },
+                    )),
+                    assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                        assemble::AInstruction::Address(offset),
+                    )),
+                    assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                        assemble::CInstruction {
+                            computation: assemble::Computation::DPlusA,
+                            destination: assemble::Destination::A,
+                            jump: assemble::Jump::Null,
+                        },
+                    )),
+                    assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                        assemble::CInstruction {
+                            computation: assemble::Computation::M,
+                            destination: assemble::Destination::D,
+                            jump: assemble::Jump::Null,
+                        },
+                    )),
+                ]
+            }
         }
         PushArg::Constant(number) => {
             vec![
@@ -455,11 +479,11 @@ mod tests {
             },
             TestCase {
                 command: "push pointer 0".to_string(),
-                expected_assembly: push_with_offset(THIS, 0),
+                expected_assembly: push_dereferenced_symbol_pointer(THIS),
             },
             TestCase {
                 command: "push pointer 1".to_string(),
-                expected_assembly: push_with_offset(THAT, 0),
+                expected_assembly: push_dereferenced_symbol_pointer(THAT),
             },
             TestCase {
                 command: "push temp 0".to_string(),
