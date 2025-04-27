@@ -56,6 +56,7 @@ enum Command {
     Pop(PopArg),
     Add,
     Sub,
+    And,
 }
 
 #[derive(Debug)]
@@ -88,6 +89,7 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
     let pop = "pop";
     let add = "add";
     let sub = "sub";
+    let and = "and";
 
     let words: Vec<&str> = line.split(" ").collect();
 
@@ -102,6 +104,7 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
         (Some(cmd), None, None) => match cmd {
             cmd if *cmd == add => Command::Add,
             cmd if *cmd == sub => Command::Sub,
+            cmd if *cmd == and => Command::And,
             _ => {
                 return Err(TranslateError::Invalid);
             }
@@ -184,6 +187,7 @@ fn to_assembly(command: Command, program_name: &str) -> Vec<assemble::AssemblyLi
         Command::Pop(memory_segment) => pop(memory_segment, program_name),
         Command::Add => add(),
         Command::Sub => sub(),
+        Command::And => and(),
     }
 }
 
@@ -195,6 +199,12 @@ fn add() -> Vec<assemble::AssemblyLine> {
 
 fn sub() -> Vec<assemble::AssemblyLine> {
     let computation = assemble::Computation::DMinusM;
+
+    binary_operation(computation)
+}
+
+fn and() -> Vec<assemble::AssemblyLine> {
+    let computation = assemble::Computation::DAndM;
 
     binary_operation(computation)
 }
@@ -725,7 +735,7 @@ M=M+1"
     }
 
     #[test]
-    fn test_arithmetic() {
+    fn test_arithmetic_logic() {
         struct TestCase {
             command: String,
             expected_assembly: String,
@@ -750,6 +760,16 @@ A=M
 D=M
 A=A-1
 M=D-M"
+                    .to_string(),
+            },
+            TestCase {
+                command: "and".to_string(),
+                expected_assembly: "@SP
+M=M-1
+A=M
+D=M
+A=A-1
+M=D&M"
                     .to_string(),
             },
         ];
