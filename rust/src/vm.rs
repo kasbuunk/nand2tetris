@@ -10,6 +10,12 @@ static THIS: &str = "THIS";
 static THAT: &str = "THAT";
 static R5: &str = "R5";
 static R6: &str = "R6";
+static R7: &str = "R7";
+static R8: &str = "R8";
+static R9: &str = "R9";
+static R10: &str = "R10";
+static R11: &str = "R11";
+static R12: &str = "R12";
 
 pub fn translate(input: &str) -> Result<String, TranslateError> {
     let parsed_vm_lines: Vec<Command> = input
@@ -236,6 +242,12 @@ fn push(push_arg: PushArg) -> Vec<assemble::AssemblyLine> {
             let symbol = match offset {
                 0 => R5,
                 1 => R6,
+                2 => R7,
+                3 => R8,
+                4 => R9,
+                5 => R10,
+                6 => R11,
+                7 => R12,
                 _ => todo!(),
             };
 
@@ -415,6 +427,30 @@ mod tests {
             TestCase {
                 command: "push temp 1".to_string(),
                 expected_assembly: push_dereferenced_symbol_pointer(R6),
+            },
+            TestCase {
+                command: "push temp 2".to_string(),
+                expected_assembly: push_dereferenced_symbol_pointer(R7),
+            },
+            TestCase {
+                command: "push temp 3".to_string(),
+                expected_assembly: push_dereferenced_symbol_pointer(R8),
+            },
+            TestCase {
+                command: "push temp 4".to_string(),
+                expected_assembly: push_dereferenced_symbol_pointer(R9),
+            },
+            TestCase {
+                command: "push temp 5".to_string(),
+                expected_assembly: push_dereferenced_symbol_pointer(R10),
+            },
+            TestCase {
+                command: "push temp 6".to_string(),
+                expected_assembly: push_dereferenced_symbol_pointer(R11),
+            },
+            TestCase {
+                command: "push temp 7".to_string(),
+                expected_assembly: push_dereferenced_symbol_pointer(R12),
             },
             TestCase {
                 command: "push constant 7".to_string(),
