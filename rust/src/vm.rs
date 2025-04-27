@@ -147,6 +147,7 @@ fn parse_pop_operands(segment: &str, offset: &str) -> Result<PopArg, TranslateEr
     let this = "this";
     let that = "that";
     let pointer = "pointer";
+    let temp = "temp";
 
     let n = offset.parse::<u16>().unwrap();
     let segment = match segment {
@@ -155,6 +156,7 @@ fn parse_pop_operands(segment: &str, offset: &str) -> Result<PopArg, TranslateEr
         segment if segment == this => PopArg::MemorySegment(MemorySegment::This(n)),
         segment if segment == that => PopArg::MemorySegment(MemorySegment::That(n)),
         segment if segment == pointer => PopArg::Pointer(n),
+        segment if segment == temp => PopArg::Temp(n),
         _ => {
             return Err(TranslateError::Invalid);
         }
@@ -316,40 +318,77 @@ fn pop(pop_arg: PopArg) -> Vec<assemble::AssemblyLine> {
             1 => return pop(PopArg::MemorySegment(MemorySegment::That(0))),
             _ => todo!(), // TODO: handle error.
         },
-        PopArg::Temp(_) => todo!(),
+        PopArg::Temp(n) => (R5, 0),
     };
 
-    vec![
-        // Store address symbol[offset] in @SP.
-        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Address(offset),
-        )),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::A,
-            destination: assemble::Destination::D,
-            jump: assemble::Jump::Null,
-        })),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Symbol(symbol.to_string()),
-        )),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::DPlusM,
-            destination: assemble::Destination::D,
-            jump: assemble::Jump::Null,
-        })),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Symbol(SP.to_string()),
-        )),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::M,
-            destination: assemble::Destination::A,
-            jump: assemble::Jump::Null,
-        })),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::D,
-            destination: assemble::Destination::M,
-            jump: assemble::Jump::Null,
-        })),
+    let dereference_with_offset = offset != 0;
+
+    let store_in_sp = if dereference_with_offset {
+        vec![
+            // Store address symbol[offset] in @SP.
+            assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                assemble::AInstruction::Address(offset),
+            )),
+            assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+                computation: assemble::Computation::A,
+                destination: assemble::Destination::D,
+                jump: assemble::Jump::Null,
+            })),
+            assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                assemble::AInstruction::Symbol(symbol.to_string()),
+            )),
+            assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+                computation: assemble::Computation::DPlusM,
+                destination: assemble::Destination::D,
+                jump: assemble::Jump::Null,
+            })),
+            assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                assemble::AInstruction::Symbol(SP.to_string()),
+            )),
+            assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+                computation: assemble::Computation::M,
+                destination: assemble::Destination::A,
+                jump: assemble::Jump::Null,
+            })),
+            assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+                computation: assemble::Computation::D,
+                destination: assemble::Destination::M,
+                jump: assemble::Jump::Null,
+            })),
+        ]
+    } else {
+        vec![
+            // Store value in @symbol in @SP.
+            assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                assemble::AInstruction::Symbol(symbol.to_string()),
+            )),
+            assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+                computation: assemble::Computation::M,
+                destination: assemble::Destination::A,
+                jump: assemble::Jump::Null,
+            })),
+            assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+                computation: assemble::Computation::M,
+                destination: assemble::Destination::D,
+                jump: assemble::Jump::Null,
+            })),
+            assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                assemble::AInstruction::Symbol(SP.to_string()),
+            )),
+            assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+                computation: assemble::Computation::M,
+                destination: assemble::Destination::A,
+                jump: assemble::Jump::Null,
+            })),
+            assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+                computation: assemble::Computation::D,
+                destination: assemble::Destination::M,
+                jump: assemble::Jump::Null,
+            })),
+        ]
+    };
+
+    let load_into_d = vec![
         // Store popped value in D.
         assemble::AssemblyLine::Instruction(assemble::Instruction::A(
             assemble::AInstruction::Symbol(SP.to_string()),
@@ -380,7 +419,9 @@ fn pop(pop_arg: PopArg) -> Vec<assemble::AssemblyLine> {
             destination: assemble::Destination::M,
             jump: assemble::Jump::Null,
         })),
-    ]
+    ];
+
+    store_in_sp.into_iter().chain(load_into_d).collect()
 }
 
 #[cfg(test)]
@@ -453,6 +494,10 @@ mod tests {
                 expected_assembly: push_dereferenced_symbol_pointer(R12),
             },
             TestCase {
+                command: "pop temp 0".to_string(),
+                expected_assembly: pop_dereferenced_symbol_pointer(R5),
+            },
+            TestCase {
                 command: "push constant 7".to_string(),
                 expected_assembly: "@7
 D=A
@@ -481,11 +526,11 @@ M=M+1"
             },
             TestCase {
                 command: "pop pointer 0".to_string(),
-                expected_assembly: pop_with_offset(THIS, 0),
+                expected_assembly: pop_dereferenced_symbol_pointer(THIS),
             },
             TestCase {
                 command: "pop pointer 1".to_string(),
-                expected_assembly: pop_with_offset(THAT, 0),
+                expected_assembly: pop_dereferenced_symbol_pointer(THAT),
             },
         ];
 
@@ -565,6 +610,24 @@ M=D
 @SP
 M=M+1",
             segment, offset
+        )
+    }
+
+    fn pop_dereferenced_symbol_pointer(symbol: &str) -> String {
+        format!(
+            "@{}
+A=M
+D=M
+@SP
+A=M
+M=D
+@SP
+AM=M-1
+D=M
+A=A+1
+A=M
+M=D",
+            symbol
         )
     }
 
