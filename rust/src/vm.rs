@@ -129,12 +129,14 @@ fn parse_pop_operands(segment: &str, offset: &str) -> Result<MemorySegment, Tran
     let local = "local";
     let arg = "arg";
     let this = "this";
+    let that = "that";
 
     let n = offset.parse::<u16>().unwrap();
     let segment = match segment {
         segment if segment == arg => MemorySegment::Arg(n),
         segment if segment == local => MemorySegment::Local(n),
         segment if segment == this => MemorySegment::This(n),
+        segment if segment == that => MemorySegment::That(n),
         _ => {
             return Err(TranslateError::Invalid);
         }
@@ -364,6 +366,10 @@ mod tests {
             TestCase {
                 command: "pop this 10".to_string(),
                 expected_assembly: pop_memory(THIS, 10),
+            },
+            TestCase {
+                command: "pop that 8".to_string(),
+                expected_assembly: pop_memory(THAT, 8),
             },
             TestCase {
                 command: "push constant 7".to_string(),
