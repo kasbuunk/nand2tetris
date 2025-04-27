@@ -17,7 +17,10 @@ static R10: &str = "R10";
 static R11: &str = "R11";
 static R12: &str = "R12";
 
-pub fn translate(input: &str) -> Result<String, TranslateError> {
+pub fn translate_with_program_name(
+    program_name: &str,
+    input: &str,
+) -> Result<String, TranslateError> {
     let parsed_vm_lines: Vec<Command> = input
         .lines()
         .map(parse_line)
@@ -25,7 +28,7 @@ pub fn translate(input: &str) -> Result<String, TranslateError> {
 
     let assembly_lines: Vec<assemble::AssemblyLine> = parsed_vm_lines
         .into_iter()
-        .map(|x| to_assembly(x))
+        .map(|x| to_assembly(x, program_name))
         .flatten()
         .collect();
 
@@ -35,6 +38,10 @@ pub fn translate(input: &str) -> Result<String, TranslateError> {
         .collect();
 
     Ok(assembly_code.join("\n"))
+}
+
+pub fn translate(input: &str) -> Result<String, TranslateError> {
+    translate_with_program_name("TODO", input)
 }
 
 #[derive(Debug)]
@@ -117,7 +124,7 @@ fn parse_push_operands(segment: &str, offset: &str) -> Result<PushArg, Translate
     let constant = "constant";
     let arg = "arg";
     let local = "local";
-    let stat = "arg";
+    let stat = "static";
     let this = "this";
     let that = "that";
     let pointer = "pointer";
@@ -165,14 +172,14 @@ fn parse_pop_operands(segment: &str, offset: &str) -> Result<PopArg, TranslateEr
     Ok(segment)
 }
 
-fn to_assembly(command: Command) -> Vec<assemble::AssemblyLine> {
+fn to_assembly(command: Command, program_name: &str) -> Vec<assemble::AssemblyLine> {
     match command {
-        Command::Push(memory_segment) => push(memory_segment),
+        Command::Push(memory_segment) => push(memory_segment, program_name),
         Command::Pop(memory_segment) => pop(memory_segment),
     }
 }
 
-fn push(push_arg: PushArg) -> Vec<assemble::AssemblyLine> {
+fn push(push_arg: PushArg, program_name: &str) -> Vec<assemble::AssemblyLine> {
     // Determine the instructions to load the data in the D-register.
     let load_instructions = match push_arg {
         PushArg::MemorySegment(segment) => {
@@ -258,10 +265,30 @@ fn push(push_arg: PushArg) -> Vec<assemble::AssemblyLine> {
                 )),
             ]
         }
-        PushArg::Static(_) => todo!(),
+        PushArg::Static(n) => {
+            vec![
+                assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+                    assemble::AInstruction::Symbol(format!("{}.{}", program_name, n)),
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::M,
+                        destination: assemble::Destination::A,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+                assemble::AssemblyLine::Instruction(assemble::Instruction::C(
+                    assemble::CInstruction {
+                        computation: assemble::Computation::M,
+                        destination: assemble::Destination::D,
+                        jump: assemble::Jump::Null,
+                    },
+                )),
+            ]
+        }
         PushArg::Pointer(n) => match n {
-            0 => return push(PushArg::MemorySegment(MemorySegment::This(0))),
-            1 => return push(PushArg::MemorySegment(MemorySegment::That(0))),
+            0 => return push(PushArg::MemorySegment(MemorySegment::This(0)), program_name),
+            1 => return push(PushArg::MemorySegment(MemorySegment::That(0)), program_name),
             _ => todo!(), // TODO: handle error.
         },
         PushArg::Temp(offset) => {
@@ -608,6 +635,35 @@ M=M+1"
         }
 
         Ok(())
+    }
+
+    #[test]
+    fn test_static() {
+        struct TestCase {
+            command: String,
+            program_name: String,
+            expected_assembly: String,
+        }
+
+        let test_cases = vec![
+            //
+            TestCase {
+                command: "push static 0".to_string(),
+                program_name: "Test".to_string(),
+                expected_assembly: push_dereferenced_symbol_pointer("Test.0"),
+            },
+        ];
+
+        for test_case in test_cases {
+            let assembly = translate_with_program_name(&test_case.program_name, &test_case.command)
+                .expect(&format!("failed: {}", &test_case.command));
+
+            assert_eq!(
+                test_case.expected_assembly, assembly,
+                "{} failed: expected {}, got {}",
+                test_case.command, test_case.expected_assembly, assembly,
+            );
+        }
     }
 
     #[test]
