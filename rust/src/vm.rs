@@ -259,71 +259,88 @@ fn pop(pop_arg: PopArg) -> Vec<assemble::AssemblyLine> {
     let dereference_with_offset = offset != 0;
 
     let store_in_sp = if dereference_with_offset {
-        vec![
-            // Store address symbol[offset] in @SP.
-            assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-                assemble::AInstruction::Address(offset),
-            )),
-            assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-                computation: assemble::Computation::A,
-                destination: assemble::Destination::D,
-                jump: assemble::Jump::Null,
-            })),
-            assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-                assemble::AInstruction::Symbol(symbol.to_string()),
-            )),
-            assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-                computation: assemble::Computation::DPlusM,
-                destination: assemble::Destination::D,
-                jump: assemble::Jump::Null,
-            })),
-            assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-                assemble::AInstruction::Symbol(SP.to_string()),
-            )),
-            assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-                computation: assemble::Computation::M,
-                destination: assemble::Destination::A,
-                jump: assemble::Jump::Null,
-            })),
-            assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-                computation: assemble::Computation::D,
-                destination: assemble::Destination::M,
-                jump: assemble::Jump::Null,
-            })),
-        ]
+        store_temporarily_to_stack_with_offset(symbol, offset)
     } else {
-        vec![
-            // Store value in @symbol in @SP.
-            assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-                assemble::AInstruction::Symbol(symbol.to_string()),
-            )),
-            assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-                computation: assemble::Computation::M,
-                destination: assemble::Destination::A,
-                jump: assemble::Jump::Null,
-            })),
-            assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-                computation: assemble::Computation::M,
-                destination: assemble::Destination::D,
-                jump: assemble::Jump::Null,
-            })),
-            assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-                assemble::AInstruction::Symbol(SP.to_string()),
-            )),
-            assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-                computation: assemble::Computation::M,
-                destination: assemble::Destination::A,
-                jump: assemble::Jump::Null,
-            })),
-            assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-                computation: assemble::Computation::D,
-                destination: assemble::Destination::M,
-                jump: assemble::Jump::Null,
-            })),
-        ]
+        store_temporarily_to_stack(symbol)
     };
 
-    let load_into_d = vec![
+    let load_into_d = pop_stack();
+
+    store_in_sp.into_iter().chain(load_into_d).collect()
+}
+
+fn store_temporarily_to_stack_with_offset(
+    symbol: &str,
+    offset: u16,
+) -> Vec<assemble::AssemblyLine> {
+    vec![
+        // Store address symbol[offset] in @SP.
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Address(offset),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::A,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(symbol.to_string()),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::DPlusM,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(SP.to_string()),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::D,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        })),
+    ]
+}
+
+fn store_temporarily_to_stack(symbol: &str) -> Vec<assemble::AssemblyLine> {
+    vec![
+        // Store value in @symbol in @SP.
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(symbol.to_string()),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(SP.to_string()),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::D,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        })),
+    ]
+}
+
+fn pop_stack() -> Vec<assemble::AssemblyLine> {
+    vec![
         // Store popped value in D.
         assemble::AssemblyLine::Instruction(assemble::Instruction::A(
             assemble::AInstruction::Symbol(SP.to_string()),
@@ -354,9 +371,7 @@ fn pop(pop_arg: PopArg) -> Vec<assemble::AssemblyLine> {
             destination: assemble::Destination::M,
             jump: assemble::Jump::Null,
         })),
-    ];
-
-    store_in_sp.into_iter().chain(load_into_d).collect()
+    ]
 }
 
 fn load_symbol(symbol: &str) -> Vec<assemble::AssemblyLine> {
