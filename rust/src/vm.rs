@@ -211,7 +211,11 @@ fn push(push_arg: PushArg) -> Vec<assemble::AssemblyLine> {
             ]
         }
         PushArg::Static(_) => todo!(),
-        PushArg::Pointer(_) => todo!(),
+        PushArg::Pointer(n) => match n {
+            0 => return push(PushArg::MemorySegment(MemorySegment::This(0))),
+            1 => return push(PushArg::MemorySegment(MemorySegment::That(0))),
+            n => todo!(), // TODO: handle error.
+        },
         PushArg::Temp(_) => todo!(),
     };
 
@@ -346,6 +350,14 @@ mod tests {
             TestCase {
                 command: "push that 2".to_string(),
                 expected_assembly: push_memory(THAT, 2),
+            },
+            TestCase {
+                command: "push pointer 0".to_string(),
+                expected_assembly: push_memory(THIS, 0),
+            },
+            TestCase {
+                command: "push pointer 1".to_string(),
+                expected_assembly: push_memory(THAT, 0),
             },
             TestCase {
                 command: "push constant 7".to_string(),
