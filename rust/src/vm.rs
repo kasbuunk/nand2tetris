@@ -57,6 +57,7 @@ enum Command {
     Add,
     Sub,
     And,
+    Or,
 }
 
 #[derive(Debug)]
@@ -90,6 +91,7 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
     let add = "add";
     let sub = "sub";
     let and = "and";
+    let or = "or";
 
     let words: Vec<&str> = line.split(" ").collect();
 
@@ -105,6 +107,7 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
             cmd if *cmd == add => Command::Add,
             cmd if *cmd == sub => Command::Sub,
             cmd if *cmd == and => Command::And,
+            cmd if *cmd == or => Command::Or,
             _ => {
                 return Err(TranslateError::Invalid);
             }
@@ -188,6 +191,7 @@ fn to_assembly(command: Command, program_name: &str) -> Vec<assemble::AssemblyLi
         Command::Add => add(),
         Command::Sub => sub(),
         Command::And => and(),
+        Command::Or => or(),
     }
 }
 
@@ -205,6 +209,12 @@ fn sub() -> Vec<assemble::AssemblyLine> {
 
 fn and() -> Vec<assemble::AssemblyLine> {
     let computation = assemble::Computation::DAndM;
+
+    binary_operation(computation)
+}
+
+fn or() -> Vec<assemble::AssemblyLine> {
+    let computation = assemble::Computation::DOrM;
 
     binary_operation(computation)
 }
@@ -770,6 +780,16 @@ A=M
 D=M
 A=A-1
 M=D&M"
+                    .to_string(),
+            },
+            TestCase {
+                command: "or".to_string(),
+                expected_assembly: "@SP
+M=M-1
+A=M
+D=M
+A=A-1
+M=D|M"
                     .to_string(),
             },
         ];
