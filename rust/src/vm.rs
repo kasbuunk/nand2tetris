@@ -45,7 +45,7 @@ impl error::Error for TranslateError {}
 #[derive(Debug)]
 enum Command {
     Push(PushArg),
-    Pop(MemorySegment),
+    Pop(PopArg),
 }
 
 #[derive(Debug)]
@@ -59,6 +59,14 @@ enum MemorySegment {
 #[derive(Debug)]
 enum PushArg {
     Constant(u16),
+    Static(u16),
+    Pointer(u16),
+    Temp(u16),
+    MemorySegment(MemorySegment),
+}
+
+#[derive(Debug)]
+enum PopArg {
     Static(u16),
     Pointer(u16),
     Temp(u16),
@@ -125,18 +133,20 @@ fn parse_push_operands(segment: &str, offset: &str) -> Result<PushArg, Translate
     Ok(push_operand)
 }
 
-fn parse_pop_operands(segment: &str, offset: &str) -> Result<MemorySegment, TranslateError> {
+fn parse_pop_operands(segment: &str, offset: &str) -> Result<PopArg, TranslateError> {
     let local = "local";
     let arg = "arg";
     let this = "this";
     let that = "that";
+    let pointer = "pointer";
 
     let n = offset.parse::<u16>().unwrap();
     let segment = match segment {
-        segment if segment == arg => MemorySegment::Arg(n),
-        segment if segment == local => MemorySegment::Local(n),
-        segment if segment == this => MemorySegment::This(n),
-        segment if segment == that => MemorySegment::That(n),
+        segment if segment == arg => PopArg::MemorySegment(MemorySegment::Arg(n)),
+        segment if segment == local => PopArg::MemorySegment(MemorySegment::Local(n)),
+        segment if segment == this => PopArg::MemorySegment(MemorySegment::This(n)),
+        segment if segment == that => PopArg::MemorySegment(MemorySegment::That(n)),
+        segment if segment == pointer => PopArg::Pointer(n),
         _ => {
             return Err(TranslateError::Invalid);
         }
@@ -254,12 +264,19 @@ fn push(push_arg: PushArg) -> Vec<assemble::AssemblyLine> {
         .collect()
 }
 
-fn pop(memory_segment: MemorySegment) -> Vec<assemble::AssemblyLine> {
-    let (symbol, offset) = match memory_segment {
-        MemorySegment::Arg(offset) => (ARG, offset),
-        MemorySegment::Local(offset) => (LCL, offset),
-        MemorySegment::This(offset) => (THIS, offset),
-        MemorySegment::That(offset) => (THAT, offset),
+fn pop(pop_arg: PopArg) -> Vec<assemble::AssemblyLine> {
+    let (symbol, offset) = match pop_arg {
+        PopArg::MemorySegment(MemorySegment::Arg(offset)) => (ARG, offset),
+        PopArg::MemorySegment(MemorySegment::Local(offset)) => (LCL, offset),
+        PopArg::MemorySegment(MemorySegment::This(offset)) => (THIS, offset),
+        PopArg::MemorySegment(MemorySegment::That(offset)) => (THAT, offset),
+        PopArg::Static(_) => todo!(),
+        PopArg::Pointer(n) => match n {
+            0 => return pop(PopArg::MemorySegment(MemorySegment::This(0))),
+            1 => return pop(PopArg::MemorySegment(MemorySegment::That(0))),
+            _ => todo!(), // TODO: handle error.
+        },
+        PopArg::Temp(_) => todo!(),
     };
 
     vec![
@@ -370,6 +387,14 @@ mod tests {
             TestCase {
                 command: "pop that 8".to_string(),
                 expected_assembly: pop_memory(THAT, 8),
+            },
+            TestCase {
+                command: "pop pointer 0".to_string(),
+                expected_assembly: pop_memory(THIS, 0),
+            },
+            TestCase {
+                command: "pop pointer 1".to_string(),
+                expected_assembly: pop_memory(THAT, 0),
             },
             TestCase {
                 command: "push constant 7".to_string(),
