@@ -60,6 +60,7 @@ enum Command {
     And,
     Or,
     Not,
+    Eq,
 }
 
 #[derive(Debug)]
@@ -96,6 +97,7 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
     let and = "and";
     let or = "or";
     let not = "not";
+    let eq = "eq";
 
     let words: Vec<&str> = line.split(" ").collect();
 
@@ -114,6 +116,7 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
             cmd if *cmd == and => Command::And,
             cmd if *cmd == or => Command::Or,
             cmd if *cmd == not => Command::Not,
+            cmd if *cmd == eq => Command::Eq,
             _ => {
                 return Err(TranslateError::Invalid);
             }
@@ -200,6 +203,7 @@ fn to_assembly(command: Command, program_name: &str) -> Vec<assemble::AssemblyLi
         Command::And => and(),
         Command::Or => or(),
         Command::Not => not(),
+        Command::Eq => eq(),
     }
 }
 
@@ -237,6 +241,38 @@ fn or() -> Vec<assemble::AssemblyLine> {
     let computation = assemble::Computation::DOrM;
 
     binary_operation(computation)
+}
+
+fn eq() -> Vec<assemble::AssemblyLine> {
+    let pop_and_load_instructions = pop_and_load();
+
+    let equality = vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::DMinusM,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::DPlusOne,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::One,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::DAndM,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        })),
+    ];
+
+    pop_and_load_instructions
+        .into_iter()
+        .chain(equality)
+        .collect()
 }
 
 fn binary_operation(computation: assemble::Computation) -> Vec<assemble::AssemblyLine> {
@@ -824,6 +860,19 @@ M=D-M"
                 expected_assembly: "@SP
 A=M
 M=-M"
+                    .to_string(),
+            },
+            TestCase {
+                command: "eq".to_string(),
+                expected_assembly: "@SP
+M=M-1
+A=M
+D=M
+A=A-1
+D=D-M
+D=D+1
+M=1
+M=D&M"
                     .to_string(),
             },
             TestCase {
