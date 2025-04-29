@@ -34,7 +34,7 @@ impl Into<String> for AssemblyLine {
             AssemblyLine::Comment(comment) => format!("// {}", comment),
             AssemblyLine::Instruction(instruction) => instruction.into(),
             AssemblyLine::LabelDeclaration(Symbol(symbol)) => {
-                format!("@{}", symbol.to_string())
+                format!("({})", symbol.to_string())
             }
         }
     }
@@ -58,7 +58,7 @@ impl Into<String> for MachineInstruction {
 struct SymbolTable(HashMap<Symbol, Address>);
 
 #[derive(Hash, Eq, PartialEq, Debug)]
-pub struct Symbol(String);
+pub struct Symbol(pub String);
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Address(pub u16);
