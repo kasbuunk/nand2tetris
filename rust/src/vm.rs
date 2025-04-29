@@ -61,6 +61,7 @@ enum Command {
     Or,
     Not,
     Eq,
+    Gt,
 }
 
 #[derive(Debug)]
@@ -149,6 +150,7 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
     let or = "or";
     let not = "not";
     let eq = "eq";
+    let gt = "gt";
 
     let words: Vec<&str> = line.split(" ").collect();
 
@@ -168,6 +170,7 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
             cmd if *cmd == or => Command::Or,
             cmd if *cmd == not => Command::Not,
             cmd if *cmd == eq => Command::Eq,
+            cmd if *cmd == gt => Command::Gt,
             _ => {
                 return Err(TranslateError::Invalid);
             }
@@ -255,6 +258,7 @@ fn to_assembly(command: Command, program_name: &str) -> Vec<assemble::AssemblyLi
         Command::Or => or(),
         Command::Not => not(),
         Command::Eq => eq(),
+        Command::Gt => gt(),
     }
 }
 
@@ -323,6 +327,39 @@ fn eq() -> Vec<assemble::AssemblyLine> {
     pop_and_load_instructions
         .into_iter()
         .chain(equality)
+        .collect()
+}
+
+fn gt() -> Vec<assemble::AssemblyLine> {
+    let pop_and_load_instructions = pop_and_load();
+
+    let greater_than = vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::MMinusD,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol("SET_TRUE".to_string()),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::D,
+            destination: assemble::Destination::Null,
+            jump: assemble::Jump::JGT,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol("SET_FALSE".to_string()),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::Zero,
+            destination: assemble::Destination::Null,
+            jump: assemble::Jump::JMP,
+        })),
+    ];
+
+    pop_and_load_instructions
+        .into_iter()
+        .chain(greater_than)
         .collect()
 }
 
@@ -924,6 +961,20 @@ D=D-M
 D=D+1
 M=1
 M=D&M"
+                    .to_string(),
+            },
+            TestCase {
+                command: "gt".to_string(),
+                expected_assembly: "@SP
+M=M-1
+A=M
+D=M
+A=A-1
+D=M-D
+@SET_TRUE
+D;JGT
+@SET_FALSE
+0;JMP"
                     .to_string(),
             },
             TestCase {
