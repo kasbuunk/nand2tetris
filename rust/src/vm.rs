@@ -17,6 +17,10 @@ static R10: &str = "R10";
 static R11: &str = "R11";
 static R12: &str = "R12";
 
+static SET_TRUE: &str = "SET_TRUE";
+static SET_FALSE: &str = "SET_FALSE";
+static SET_SP: &str = "SET_SP";
+
 pub fn translate(program_name: String, input: &str) -> Result<String, TranslateError> {
     let parsed_vm_lines: Vec<Command> = input
         .lines()
@@ -90,12 +94,12 @@ enum PopArg {
 }
 
 fn initial_assembly() -> Vec<AssemblyLine> {
-    let label_set_true = assemble::Symbol(String::from("SET_TRUE"));
-    let label_set_false = assemble::Symbol(String::from("SET_FALSE"));
-    let label_set_sp = String::from("SET_SP");
+    let label_set_true = String::from("SET_TRUE");
+    let label_set_false = String::from("SET_FALSE");
+    let label_set_sp = String::from(SET_SP);
 
     vec![
-        assemble::AssemblyLine::LabelDeclaration(label_set_true),
+        assemble::AssemblyLine::LabelDeclaration(assemble::Symbol(label_set_true)),
         assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
             computation: assemble::Computation::MinusOne,
             destination: assemble::Destination::D,
@@ -109,7 +113,7 @@ fn initial_assembly() -> Vec<AssemblyLine> {
             destination: assemble::Destination::Null,
             jump: assemble::Jump::JMP,
         })),
-        assemble::AssemblyLine::LabelDeclaration(label_set_false),
+        assemble::AssemblyLine::LabelDeclaration(assemble::Symbol(label_set_false)),
         assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
             computation: assemble::Computation::Zero,
             destination: assemble::Destination::D,
