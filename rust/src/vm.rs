@@ -146,18 +146,6 @@ fn initial_assembly() -> Vec<AssemblyLine> {
 }
 
 fn parse_line(line: &str) -> Result<Command, TranslateError> {
-    let push = "push";
-    let pop = "pop";
-    let add = "add";
-    let sub = "sub";
-    let neg = "neg";
-    let and = "and";
-    let or = "or";
-    let not = "not";
-    let eq = "eq";
-    let gt = "gt";
-    let lt = "lt";
-
     let words: Vec<&str> = line.split(" ").collect();
 
     let command = match (
@@ -168,16 +156,16 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
         (None, _, _) => {
             return Err(TranslateError::Invalid);
         }
-        (Some(cmd), None, None) => match cmd {
-            cmd if *cmd == add => Command::Add,
-            cmd if *cmd == sub => Command::Sub,
-            cmd if *cmd == neg => Command::Neg,
-            cmd if *cmd == and => Command::And,
-            cmd if *cmd == or => Command::Or,
-            cmd if *cmd == not => Command::Not,
-            cmd if *cmd == eq => Command::Eq,
-            cmd if *cmd == gt => Command::Gt,
-            cmd if *cmd == lt => Command::Lt,
+        (Some(cmd), None, None) => match *cmd {
+            "add" => Command::Add,
+            "sub" => Command::Sub,
+            "neg" => Command::Neg,
+            "and" => Command::And,
+            "or" => Command::Or,
+            "not" => Command::Not,
+            "eq" => Command::Eq,
+            "gt" => Command::Gt,
+            "lt" => Command::Lt,
             _ => {
                 return Err(TranslateError::Invalid);
             }
@@ -188,9 +176,9 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
         (_, _, None) => {
             return Err(TranslateError::Invalid);
         }
-        (Some(cmd), Some(segment), Some(offset)) => match cmd {
-            cmd if *cmd == push => Command::Push(parse_push_operands(segment, offset)?),
-            cmd if *cmd == pop => Command::Pop(parse_pop_operands(segment, offset)?),
+        (Some(cmd), Some(segment), Some(offset)) => match *cmd {
+            "push" => Command::Push(parse_push_operands(segment, offset)?),
+            "pop" => Command::Pop(parse_pop_operands(segment, offset)?),
             _ => {
                 return Err(TranslateError::Invalid);
             }
@@ -201,25 +189,16 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
 }
 
 fn parse_push_operands(segment: &str, offset: &str) -> Result<PushArg, TranslateError> {
-    let constant = "constant";
-    let local = "local";
-    let arg = "arg";
-    let this = "this";
-    let that = "that";
-    let pointer = "pointer";
-    let temp = "temp";
-    let stat = "static";
-
     let n = offset.parse::<u16>().unwrap();
     let push_operand = match segment {
-        segment if segment == constant => PushArg::Constant(n),
-        segment if segment == arg => PushArg::MemorySegment(MemorySegment::Arg(n)),
-        segment if segment == local => PushArg::MemorySegment(MemorySegment::Local(n)),
-        segment if segment == stat => PushArg::Static(n),
-        segment if segment == this => PushArg::MemorySegment(MemorySegment::This(n)),
-        segment if segment == that => PushArg::MemorySegment(MemorySegment::That(n)),
-        segment if segment == pointer => PushArg::Pointer(n),
-        segment if segment == temp => PushArg::Temp(n),
+        "constant" => PushArg::Constant(n),
+        "arg" => PushArg::MemorySegment(MemorySegment::Arg(n)),
+        "local" => PushArg::MemorySegment(MemorySegment::Local(n)),
+        "static" => PushArg::Static(n),
+        "this" => PushArg::MemorySegment(MemorySegment::This(n)),
+        "that" => PushArg::MemorySegment(MemorySegment::That(n)),
+        "pointer" => PushArg::Pointer(n),
+        "temp" => PushArg::Temp(n),
         _ => {
             return Err(TranslateError::Invalid);
         }
