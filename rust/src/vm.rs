@@ -1,7 +1,7 @@
 use core::fmt;
 use std::error;
 
-use crate::assemble::{self, AssemblyLine};
+use crate::assemble;
 
 static SP: &str = "SP";
 static ARG: &str = "ARG";
@@ -18,7 +18,6 @@ static R11: &str = "R11";
 static R12: &str = "R12";
 
 static SET_TRUE: &str = "SET_TRUE";
-static SET_FALSE: &str = "SET_FALSE";
 static SET_SP: &str = "SET_SP";
 
 pub fn translate(program_name: String, input: &str) -> Result<String, TranslateError> {
@@ -92,57 +91,6 @@ enum PopArg {
     Pointer(u16),
     Temp(u16),
     MemorySegment(MemorySegment),
-}
-
-fn initial_assembly() -> Vec<AssemblyLine> {
-    let label_set_true = String::from("SET_TRUE");
-    let label_set_false = String::from("SET_FALSE");
-    let label_set_sp = String::from(SET_SP);
-
-    vec![
-        assemble::AssemblyLine::LabelDeclaration(assemble::Symbol(label_set_true)),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::MinusOne,
-            destination: assemble::Destination::D,
-            jump: assemble::Jump::Null,
-        })),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Symbol(label_set_sp.clone()),
-        )),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::Zero,
-            destination: assemble::Destination::Null,
-            jump: assemble::Jump::JMP,
-        })),
-        assemble::AssemblyLine::LabelDeclaration(assemble::Symbol(label_set_false)),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::Zero,
-            destination: assemble::Destination::D,
-            jump: assemble::Jump::Null,
-        })),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Symbol(label_set_sp.clone()),
-        )),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::Zero,
-            destination: assemble::Destination::Null,
-            jump: assemble::Jump::JMP,
-        })),
-        assemble::AssemblyLine::LabelDeclaration(assemble::Symbol(label_set_sp.clone())),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Symbol(String::from(SP)),
-        )),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::MMinusOne,
-            destination: assemble::Destination::A,
-            jump: assemble::Jump::Null,
-        })),
-        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::D,
-            destination: assemble::Destination::M,
-            jump: assemble::Jump::Null,
-        })),
-    ]
 }
 
 fn parse_line(line: &str) -> Result<Command, TranslateError> {
@@ -323,6 +271,8 @@ fn lt() -> Vec<assemble::AssemblyLine> {
 
 fn compare(jump: assemble::Jump) -> Vec<assemble::AssemblyLine> {
     let pop_and_load_instructions = pop_and_load();
+    let label_set_true = String::from(SET_TRUE);
+    let label_set_sp = String::from(SET_SP);
 
     let greater_than = vec![
         assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
@@ -331,20 +281,53 @@ fn compare(jump: assemble::Jump) -> Vec<assemble::AssemblyLine> {
             jump: assemble::Jump::Null,
         })),
         assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Symbol("SET_TRUE".to_string()),
+            assemble::AInstruction::Symbol(label_set_true.clone()),
         )),
         assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
             computation: assemble::Computation::D,
             destination: assemble::Destination::Null,
             jump,
         })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::Zero,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
         assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Symbol("SET_FALSE".to_string()),
+            assemble::AInstruction::Symbol(label_set_sp.clone()),
         )),
         assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
             computation: assemble::Computation::Zero,
             destination: assemble::Destination::Null,
             jump: assemble::Jump::JMP,
+        })),
+        assemble::AssemblyLine::LabelDeclaration(assemble::Symbol(label_set_true)),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::MinusOne,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(label_set_sp.clone()),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::Zero,
+            destination: assemble::Destination::Null,
+            jump: assemble::Jump::JMP,
+        })),
+        assemble::AssemblyLine::LabelDeclaration(assemble::Symbol(label_set_sp.clone())),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(String::from(SP)),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::MMinusOne,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::D,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
         })),
     ];
 
@@ -964,9 +947,18 @@ A=A-1
 D=M-D
 @SET_TRUE
 D;JGT
-@SET_FALSE
-0;JMP"
-                    .to_string(),
+D=0
+@SET_SP
+0;JMP
+(SET_TRUE)
+D=-1
+@SET_SP
+0;JMP
+(SET_SP)
+@SP
+A=M-1
+M=D"
+                .to_string(),
             },
             TestCase {
                 command: "lt".to_string(),
@@ -978,9 +970,18 @@ A=A-1
 D=M-D
 @SET_TRUE
 D;JLT
-@SET_FALSE
-0;JMP"
-                    .to_string(),
+D=0
+@SET_SP
+0;JMP
+(SET_TRUE)
+D=-1
+@SET_SP
+0;JMP
+(SET_SP)
+@SP
+A=M-1
+M=D"
+                .to_string(),
             },
             TestCase {
                 command: "and".to_string(),
@@ -1021,34 +1022,6 @@ M=!M"
                 test_case.command, test_case.expected_assembly, assembly,
             );
         }
-    }
-
-    #[test]
-    fn test_initial_assembly() {
-        let expected_assembly = "(SET_TRUE)
-D=-1
-@SET_SP
-0;JMP
-(SET_FALSE)
-D=0
-@SET_SP
-0;JMP
-(SET_SP)
-@SP
-A=M-1
-M=D";
-
-        let assembly = initial_assembly()
-            .into_iter()
-            .map(|x| x.into())
-            .collect::<Vec<String>>()
-            .join("\n");
-
-        assert_eq!(
-            expected_assembly, assembly,
-            "expected {}, got {}",
-            expected_assembly, assembly,
-        );
     }
 
     #[test]
