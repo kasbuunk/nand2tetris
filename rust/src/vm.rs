@@ -244,7 +244,7 @@ fn eq() -> Vec<assemble::AssemblyLine> {
             jump: assemble::Jump::Null,
         })),
         assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::One,
+            computation: assemble::Computation::MinusOne,
             destination: assemble::Destination::M,
             jump: assemble::Jump::Null,
         })),
@@ -933,7 +933,7 @@ D=M
 A=A-1
 D=D-M
 D=D+1
-M=1
+M=-1
 M=D&M"
                     .to_string(),
             },
