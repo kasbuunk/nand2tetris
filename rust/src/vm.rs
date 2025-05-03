@@ -148,11 +148,7 @@ fn initial_assembly() -> Vec<AssemblyLine> {
 fn parse_line(line: &str) -> Result<Command, TranslateError> {
     let words: Vec<&str> = line.split(" ").collect();
 
-    let command = match (
-        words.iter().next(),
-        words.iter().skip(1).next(),
-        words.iter().skip(2).next(),
-    ) {
+    let command = match (words.get(0), words.get(1), words.get(2)) {
         (None, _, _) => {
             return Err(TranslateError::Invalid);
         }
