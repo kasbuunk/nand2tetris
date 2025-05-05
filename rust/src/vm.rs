@@ -220,13 +220,18 @@ fn function(
     function_name: String,
     num_arguments: u16,
 ) -> Vec<assemble::AssemblyLine> {
-    vec![
-        assemble::AssemblyLine::LabelDeclaration(assemble::Symbol(format!(
-            "{}.{}",
-            program_name, function_name
-        ))),
-        //
-    ]
+    let label = assemble::AssemblyLine::LabelDeclaration(assemble::Symbol(format!(
+        "{}.{}",
+        program_name, function_name
+    )));
+
+    let push0 = push(PushArg::Constant(0), program_name);
+
+    let push_instructions = std::iter::repeat_n(push0, num_arguments.into())
+        .into_iter()
+        .flatten();
+
+    std::iter::once(label).chain(push_instructions).collect()
 }
 
 fn label(symbol: assemble::Symbol, program_name: &str) -> Vec<assemble::AssemblyLine> {
@@ -1194,11 +1199,33 @@ D=M
             expected_assembly: String,
         }
 
-        let test_cases = vec![TestCase {
-            command: "function myfn 0".to_string(),
-            program_name: "Test".to_string(),
-            expected_assembly: "(Test.myfn)".to_string(),
-        }];
+        let test_cases = vec![
+            TestCase {
+                command: "function myfn 0".to_string(),
+                program_name: "Test".to_string(),
+                expected_assembly: "(Test.myfn)".to_string(),
+            },
+            TestCase {
+                command: "function anotherfn 2".to_string(),
+                program_name: "MyTest".to_string(),
+                expected_assembly: "(MyTest.anotherfn)
+@0
+D=A
+@SP
+A=M
+M=D
+@SP
+M=M+1
+@0
+D=A
+@SP
+A=M
+M=D
+@SP
+M=M+1"
+                    .to_string(),
+            },
+        ];
 
         for test_case in test_cases {
             let assembly = translate(test_case.program_name, &test_case.command)

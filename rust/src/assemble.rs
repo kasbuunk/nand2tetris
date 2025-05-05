@@ -21,7 +21,7 @@ pub fn assemble(assembly_code: &str) -> Result<String, ParseError> {
     Ok(machine_code)
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum AssemblyLine {
     Instruction(Instruction),
     LabelDeclaration(Symbol),
@@ -57,7 +57,7 @@ impl Into<String> for MachineInstruction {
 
 struct SymbolTable(HashMap<Symbol, Address>);
 
-#[derive(Hash, Eq, PartialEq, Debug)]
+#[derive(Clone, Hash, Eq, PartialEq, Debug)]
 pub struct Symbol(pub String);
 
 #[derive(PartialEq, Debug, Clone)]
@@ -73,7 +73,7 @@ impl SymbolTable {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Instruction {
     A(AInstruction),
     C(CInstruction),
@@ -88,7 +88,7 @@ impl Into<String> for Instruction {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum AInstruction {
     Symbol(String),
     Address(u16),
@@ -103,7 +103,7 @@ impl Into<String> for AInstruction {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct CInstruction {
     pub computation: Computation,
     pub destination: Destination,
@@ -272,7 +272,7 @@ impl Jump {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Computation {
     Zero,
     One,
@@ -304,7 +304,7 @@ pub enum Computation {
     DOrM,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Destination {
     Null,
     M,
@@ -316,7 +316,7 @@ pub enum Destination {
     ADM,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Jump {
     Null,
     JGT,
