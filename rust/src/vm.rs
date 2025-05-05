@@ -68,6 +68,7 @@ enum Command {
     Lt,
     Label(assemble::Symbol),
     Goto(assemble::Symbol),
+    IfGoto(assemble::Symbol),
 }
 
 #[derive(Debug)]
@@ -123,6 +124,9 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
             Command::Label(assemble::Symbol(String::from(*label)))
         }
         (Some(&"goto"), Some(label), None) => Command::Goto(assemble::Symbol(String::from(*label))),
+        (Some(&"if-goto"), Some(label), None) => {
+            Command::IfGoto(assemble::Symbol(String::from(*label)))
+        }
         (_, _, None) => {
             return Err(TranslateError::Invalid);
         }
@@ -196,13 +200,16 @@ fn to_assembly(command: Command, program_name: &str) -> Vec<assemble::AssemblyLi
         Command::Eq => eq(),
         Command::Gt => gt(),
         Command::Lt => lt(),
-        Command::Label(symbol) => label(symbol),
+        Command::Label(symbol) => label(symbol, program_name),
         Command::Goto(symbol) => goto(symbol, program_name),
+        Command::IfGoto(symbol) => if_goto(symbol, program_name),
     }
 }
 
-fn label(symbol: assemble::Symbol) -> Vec<assemble::AssemblyLine> {
-    vec![assemble::AssemblyLine::LabelDeclaration(symbol)]
+fn label(symbol: assemble::Symbol, program_name: &str) -> Vec<assemble::AssemblyLine> {
+    vec![assemble::AssemblyLine::LabelDeclaration(assemble::Symbol(
+        format!("{}.{}", program_name, symbol.0),
+    ))]
 }
 
 fn goto(symbol: assemble::Symbol, program_name: &str) -> Vec<assemble::AssemblyLine> {
@@ -214,6 +221,32 @@ fn goto(symbol: assemble::Symbol, program_name: &str) -> Vec<assemble::AssemblyL
             computation: assemble::Computation::M,
             destination: assemble::Destination::A,
             jump: assemble::Jump::Null,
+        })),
+    ]
+}
+
+fn if_goto(symbol: assemble::Symbol, program_name: &str) -> Vec<assemble::AssemblyLine> {
+    vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(String::from(SP)),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::MMinusOne,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(format!("{}.{}", program_name, symbol.0)),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::Zero,
+            destination: assemble::Destination::Null,
+            jump: assemble::Jump::JNE,
         })),
     ]
 }
@@ -1096,15 +1129,25 @@ M=D+M";
         let test_cases = vec![
             TestCase {
                 command: "label MY_LABEL".to_string(),
-                program_name: "Test".to_string(),
-                expected_assembly: "(MY_LABEL)".to_string(),
+                program_name: "MyTest".to_string(),
+                expected_assembly: "(MyTest.MY_LABEL)".to_string(),
             },
             TestCase {
-                command: "goto MY_LABEL".to_string(),
-                program_name: "Test".to_string(),
-                expected_assembly: "@Test.MY_LABEL
+                command: "goto ANOTHER_LABEL".to_string(),
+                program_name: "AnotherTest".to_string(),
+                expected_assembly: "@AnotherTest.ANOTHER_LABEL
 A=M"
                 .to_string(),
+            },
+            TestCase {
+                command: "if-goto MY_LABEL".to_string(),
+                program_name: "Test".to_string(),
+                expected_assembly: "@SP
+A=M-1
+D=M
+@Test.MY_LABEL
+0;JNE"
+                    .to_string(),
             },
         ];
 
