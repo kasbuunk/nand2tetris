@@ -1206,6 +1206,19 @@ D=M
                 expected_assembly: "(Test.myfn)".to_string(),
             },
             TestCase {
+                command: "function anotherfn 1".to_string(),
+                program_name: "MyTest".to_string(),
+                expected_assembly: "(MyTest.anotherfn)
+@0
+D=A
+@SP
+A=M
+M=D
+@SP
+M=M+1"
+                    .to_string(),
+            },
+            TestCase {
                 command: "function anotherfn 2".to_string(),
                 program_name: "MyTest".to_string(),
                 expected_assembly: "(MyTest.anotherfn)
