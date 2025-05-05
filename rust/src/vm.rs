@@ -66,6 +66,7 @@ enum Command {
     Eq,
     Gt,
     Lt,
+    Label(assemble::Symbol),
 }
 
 #[derive(Debug)]
@@ -116,6 +117,9 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
         },
         (_, None, _) => {
             return Err(TranslateError::Invalid);
+        }
+        (Some(&"label"), Some(label), None) => {
+            Command::Label(assemble::Symbol(String::from(*label)))
         }
         (_, _, None) => {
             return Err(TranslateError::Invalid);
@@ -190,7 +194,12 @@ fn to_assembly(command: Command, program_name: &str) -> Vec<assemble::AssemblyLi
         Command::Eq => eq(),
         Command::Gt => gt(),
         Command::Lt => lt(),
+        Command::Label(symbol) => label(symbol),
     }
+}
+
+fn label(symbol: assemble::Symbol) -> Vec<assemble::AssemblyLine> {
+    vec![assemble::AssemblyLine::LabelDeclaration(symbol)]
 }
 
 fn add() -> Vec<assemble::AssemblyLine> {
@@ -1058,6 +1067,33 @@ M=D+M";
             "simple_add", expected_output, output,
         );
         Ok(())
+    }
+
+    #[test]
+    fn test_branch() {
+        struct TestCase {
+            command: String,
+            expected_assembly: String,
+        }
+
+        let test_cases = vec![
+            TestCase {
+                command: "label MY_LABEL".to_string(),
+                expected_assembly: "(MY_LABEL)".to_string(),
+            },
+            //
+        ];
+
+        for test_case in test_cases {
+            let assembly = translate("Test".to_string(), &test_case.command)
+                .expect(&format!("failed: {}", &test_case.command));
+
+            assert_eq!(
+                test_case.expected_assembly, assembly,
+                "{} failed: expected {}, got {}",
+                test_case.command, test_case.expected_assembly, assembly,
+            );
+        }
     }
 
     fn push_dereferenced_symbol_pointer(symbol: &str) -> String {
