@@ -69,6 +69,7 @@ enum Command {
     Label(assemble::Symbol),
     Goto(assemble::Symbol),
     IfGoto(assemble::Symbol),
+    Function { name: String, num_arguments: u16 },
 }
 
 #[derive(Debug)]
@@ -130,9 +131,13 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
         (_, _, None) => {
             return Err(TranslateError::Invalid);
         }
-        (Some(cmd), Some(segment), Some(offset)) => match *cmd {
-            "push" => Command::Push(parse_push_operands(segment, offset)?),
-            "pop" => Command::Pop(parse_pop_operands(segment, offset)?),
+        (Some(cmd), Some(arg1), Some(arg2)) => match *cmd {
+            "push" => Command::Push(parse_push_operands(arg1, arg2)?),
+            "pop" => Command::Pop(parse_pop_operands(arg1, arg2)?),
+            "function" => Command::Function {
+                name: arg1.to_string(),
+                num_arguments: arg2.parse::<u16>().map_err(|_| TranslateError::Invalid)?,
+            },
             _ => {
                 return Err(TranslateError::Invalid);
             }
@@ -203,7 +208,25 @@ fn to_assembly(command: Command, program_name: &str) -> Vec<assemble::AssemblyLi
         Command::Label(symbol) => label(symbol, program_name),
         Command::Goto(symbol) => goto(symbol, program_name),
         Command::IfGoto(symbol) => if_goto(symbol, program_name),
+        Command::Function {
+            name,
+            num_arguments,
+        } => function(program_name, name, num_arguments),
     }
+}
+
+fn function(
+    program_name: &str,
+    function_name: String,
+    num_arguments: u16,
+) -> Vec<assemble::AssemblyLine> {
+    vec![
+        assemble::AssemblyLine::LabelDeclaration(assemble::Symbol(format!(
+            "{}.{}",
+            program_name, function_name
+        ))),
+        //
+    ]
 }
 
 fn label(symbol: assemble::Symbol, program_name: &str) -> Vec<assemble::AssemblyLine> {
@@ -1150,6 +1173,32 @@ D=M
                     .to_string(),
             },
         ];
+
+        for test_case in test_cases {
+            let assembly = translate(test_case.program_name, &test_case.command)
+                .expect(&format!("failed: {}", &test_case.command));
+
+            assert_eq!(
+                test_case.expected_assembly, assembly,
+                "{} failed: expected {}, got {}",
+                test_case.command, test_case.expected_assembly, assembly,
+            );
+        }
+    }
+
+    #[test]
+    fn test_function() {
+        struct TestCase {
+            command: String,
+            program_name: String,
+            expected_assembly: String,
+        }
+
+        let test_cases = vec![TestCase {
+            command: "function myfn 0".to_string(),
+            program_name: "Test".to_string(),
+            expected_assembly: "(Test.myfn)".to_string(),
+        }];
 
         for test_case in test_cases {
             let assembly = translate(test_case.program_name, &test_case.command)
