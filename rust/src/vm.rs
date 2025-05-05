@@ -67,6 +67,7 @@ enum Command {
     Gt,
     Lt,
     Label(assemble::Symbol),
+    Goto(assemble::Symbol),
 }
 
 #[derive(Debug)]
@@ -121,6 +122,7 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
         (Some(&"label"), Some(label), None) => {
             Command::Label(assemble::Symbol(String::from(*label)))
         }
+        (Some(&"goto"), Some(label), None) => Command::Goto(assemble::Symbol(String::from(*label))),
         (_, _, None) => {
             return Err(TranslateError::Invalid);
         }
@@ -195,11 +197,25 @@ fn to_assembly(command: Command, program_name: &str) -> Vec<assemble::AssemblyLi
         Command::Gt => gt(),
         Command::Lt => lt(),
         Command::Label(symbol) => label(symbol),
+        Command::Goto(symbol) => goto(symbol, program_name),
     }
 }
 
 fn label(symbol: assemble::Symbol) -> Vec<assemble::AssemblyLine> {
     vec![assemble::AssemblyLine::LabelDeclaration(symbol)]
+}
+
+fn goto(symbol: assemble::Symbol, program_name: &str) -> Vec<assemble::AssemblyLine> {
+    vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(format!("{}.{}", program_name, symbol.0)),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+    ]
 }
 
 fn add() -> Vec<assemble::AssemblyLine> {
@@ -1073,19 +1089,27 @@ M=D+M";
     fn test_branch() {
         struct TestCase {
             command: String,
+            program_name: String,
             expected_assembly: String,
         }
 
         let test_cases = vec![
             TestCase {
                 command: "label MY_LABEL".to_string(),
+                program_name: "Test".to_string(),
                 expected_assembly: "(MY_LABEL)".to_string(),
             },
-            //
+            TestCase {
+                command: "goto MY_LABEL".to_string(),
+                program_name: "Test".to_string(),
+                expected_assembly: "@Test.MY_LABEL
+A=M"
+                .to_string(),
+            },
         ];
 
         for test_case in test_cases {
-            let assembly = translate("Test".to_string(), &test_case.command)
+            let assembly = translate(test_case.program_name, &test_case.command)
                 .expect(&format!("failed: {}", &test_case.command));
 
             assert_eq!(
