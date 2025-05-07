@@ -26,9 +26,26 @@ pub fn translate(program_name: String, input: &str) -> Result<String, TranslateE
         .map(parse_line)
         .collect::<Result<Vec<Command>, TranslateError>>()?;
 
+    let initial_function = None;
+
     let assembly_lines: Vec<assemble::AssemblyLine> = parsed_vm_lines
         .into_iter()
-        .map(|x| to_assembly(x, &program_name))
+        .scan(initial_function, |function_name, command| {
+            match command {
+                Command::Function {
+                    ref fn_name,
+                    num_arguments: _,
+                } => {
+                    *function_name = Some(fn_name.clone());
+                }
+                // Other commands don't change the calling function context.
+                _ => (),
+            };
+
+            let line = to_assembly(command, &program_name, function_name);
+
+            Some(line)
+        })
         .flatten()
         .collect();
 
@@ -69,7 +86,8 @@ enum Command {
     Label(assemble::Symbol),
     Goto(assemble::Symbol),
     IfGoto(assemble::Symbol),
-    Function { name: String, num_arguments: u16 },
+    Function { fn_name: String, num_arguments: u16 },
+    Call { callee: String, num_arguments: u16 },
 }
 
 #[derive(Debug)]
@@ -135,7 +153,11 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
             "push" => Command::Push(parse_push_operands(arg1, arg2)?),
             "pop" => Command::Pop(parse_pop_operands(arg1, arg2)?),
             "function" => Command::Function {
-                name: arg1.to_string(),
+                fn_name: arg1.to_string(),
+                num_arguments: arg2.parse::<u16>().map_err(|_| TranslateError::Invalid)?,
+            },
+            "call" => Command::Call {
+                callee: arg1.to_string(),
                 num_arguments: arg2.parse::<u16>().map_err(|_| TranslateError::Invalid)?,
             },
             _ => {
@@ -192,7 +214,11 @@ fn parse_pop_operands(segment: &str, offset: &str) -> Result<PopArg, TranslateEr
     Ok(segment)
 }
 
-fn to_assembly(command: Command, program_name: &str) -> Vec<assemble::AssemblyLine> {
+fn to_assembly(
+    command: Command,
+    program_name: &str,
+    caller: &Option<String>,
+) -> Vec<assemble::AssemblyLine> {
     match command {
         Command::Push(memory_segment) => push(memory_segment, program_name),
         Command::Pop(memory_segment) => pop(memory_segment, program_name),
@@ -209,9 +235,20 @@ fn to_assembly(command: Command, program_name: &str) -> Vec<assemble::AssemblyLi
         Command::Goto(symbol) => goto(symbol, program_name),
         Command::IfGoto(symbol) => if_goto(symbol, program_name),
         Command::Function {
-            name,
+            fn_name: name,
             num_arguments,
         } => function(program_name, name, num_arguments),
+        Command::Call {
+            callee,
+            num_arguments,
+        } => call(
+            program_name,
+            caller
+                .clone()
+                .expect("function call should reside in a function scope"),
+            callee,
+            num_arguments,
+        ),
     }
 }
 
@@ -234,6 +271,139 @@ fn function(
     std::iter::once(label).chain(push_instructions).collect()
 }
 
+fn call(
+    program_name: &str,
+    caller: String,
+    callee: String,
+    num_arguments: u16,
+) -> Vec<assemble::AssemblyLine> {
+    let hardcoded_arg_num = 0; // TODO: motivate with test.
+                               //
+    let return_address = format!("{}.{}$ret{}", program_name, caller, hardcoded_arg_num);
+
+    // Save return address on stack.
+    let save_return_address = push_address_to_stack(return_address.clone());
+
+    // Save LCL on stack.
+    let save_lcl = push_address_to_stack(String::from(LCL));
+    // Save ARG on stack.
+    let save_arg = push_address_to_stack(String::from(ARG));
+    // Save THIS on stack.
+    let save_this = push_address_to_stack(String::from(THIS));
+    // Save THAT on stack.
+    let save_that = push_address_to_stack(String::from(THAT));
+
+    // ARG = SP - 5 - nArgs
+    let set_arg = set_arg_for_call(num_arguments);
+
+    // LCL = SP
+    let set_lcl = set_lcl_for_call();
+
+    // goto f
+    let goto_fn = goto(assemble::Symbol(callee), program_name);
+
+    // (return address)
+    let label_return_address = vec![assemble::AssemblyLine::LabelDeclaration(assemble::Symbol(
+        return_address,
+    ))];
+
+    save_return_address
+        .into_iter()
+        .chain(save_lcl.into_iter())
+        .chain(save_arg.into_iter())
+        .chain(save_this.into_iter())
+        .chain(save_that.into_iter())
+        .chain(set_arg.into_iter())
+        .chain(set_lcl.into_iter())
+        .chain(goto_fn.into_iter())
+        .chain(label_return_address.into_iter())
+        .collect()
+}
+
+fn set_arg_for_call(num_arguments: u16) -> Vec<assemble::AssemblyLine> {
+    vec![
+        // @SP
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(SP.to_string()),
+        )),
+        // D=A
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::A,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        // @5
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Address(5),
+        )),
+        // D=D-A
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::DMinusA,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        // @ARG
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(ARG.to_string()),
+        )),
+        // A=M
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        // M=D
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::D,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        })),
+    ]
+}
+
+fn set_lcl_for_call() -> Vec<assemble::AssemblyLine> {
+    vec![
+        // @SP
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(SP.to_string()),
+        )),
+        // D=M
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        // @LCL
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(LCL.to_string()),
+        )),
+        // M=D
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::D,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        })),
+    ]
+}
+
+fn push_address_to_stack(symbol: String) -> Vec<assemble::AssemblyLine> {
+    let load_address = vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(symbol),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::A,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+    ];
+
+    load_address
+        .into_iter()
+        .chain(push_to_stack().into_iter())
+        .collect()
+}
+
 fn label(symbol: assemble::Symbol, program_name: &str) -> Vec<assemble::AssemblyLine> {
     vec![assemble::AssemblyLine::LabelDeclaration(assemble::Symbol(
         format!("{}.{}", program_name, symbol.0),
@@ -246,9 +416,9 @@ fn goto(symbol: assemble::Symbol, program_name: &str) -> Vec<assemble::AssemblyL
             assemble::AInstruction::Symbol(format!("{}.{}", program_name, symbol.0)),
         )),
         assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
-            computation: assemble::Computation::M,
-            destination: assemble::Destination::A,
-            jump: assemble::Jump::Null,
+            computation: assemble::Computation::Zero,
+            destination: assemble::Destination::Null,
+            jump: assemble::Jump::JMP,
         })),
     ]
 }
@@ -1164,8 +1334,8 @@ M=D+M";
                 command: "goto ANOTHER_LABEL".to_string(),
                 program_name: "AnotherTest".to_string(),
                 expected_assembly: "@AnotherTest.ANOTHER_LABEL
-A=M"
-                .to_string(),
+0;JMP"
+                    .to_string(),
             },
             TestCase {
                 command: "if-goto MY_LABEL".to_string(),
@@ -1192,7 +1362,7 @@ D=M
     }
 
     #[test]
-    fn test_function() {
+    fn test_function_definition() {
         struct TestCase {
             command: String,
             program_name: String,
@@ -1239,6 +1409,94 @@ M=M+1"
                     .to_string(),
             },
         ];
+
+        for test_case in test_cases {
+            let assembly = translate(test_case.program_name, &test_case.command)
+                .expect(&format!("failed: {}", &test_case.command));
+
+            assert_eq!(
+                test_case.expected_assembly, assembly,
+                "{} failed: expected {}, got {}",
+                test_case.command, test_case.expected_assembly, assembly,
+            );
+        }
+    }
+
+    #[test]
+    fn test_function_call() {
+        struct TestCase {
+            command: String,
+            program_name: String,
+            expected_assembly: String,
+        }
+
+        let test_cases = vec![TestCase {
+            // Include a function definition to specify the return address label.
+            command: "function currentfn 0
+call myfn 0"
+                .to_string(),
+            program_name: "Test".to_string(),
+            // Save return address on stack.
+            // Save LCL on stack.
+            // Save ARG on stack.
+            // Save THIS on stack.
+            // Save THAT on stack.
+            // ARG = SP - 5 - nArgs
+            // LCL = SP
+            // goto f
+            // (return address)
+            expected_assembly: "(Test.currentfn)
+@Test.currentfn$ret0
+D=A
+@SP
+A=M
+M=D
+@SP
+M=M+1
+@LCL
+D=A
+@SP
+A=M
+M=D
+@SP
+M=M+1
+@ARG
+D=A
+@SP
+A=M
+M=D
+@SP
+M=M+1
+@THIS
+D=A
+@SP
+A=M
+M=D
+@SP
+M=M+1
+@THAT
+D=A
+@SP
+A=M
+M=D
+@SP
+M=M+1
+@SP
+D=A
+@5
+D=D-A
+@ARG
+A=M
+M=D
+@SP
+D=M
+@LCL
+M=D
+@Test.myfn
+0;JMP
+(Test.currentfn$ret0)"
+                .to_string(),
+        }];
 
         for test_case in test_cases {
             let assembly = translate(test_case.program_name, &test_case.command)
