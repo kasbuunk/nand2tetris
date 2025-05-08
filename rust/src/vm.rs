@@ -27,26 +27,38 @@ pub fn translate(program_name: String, input: &str) -> Result<String, TranslateE
         .collect::<Result<Vec<Command>, TranslateError>>()?;
 
     let initial_function = None;
-    let nth_call_offset = 0;
+    let nth_call_offset: u16 = 0;
 
     let assembly_lines: Vec<assemble::AssemblyLine> = parsed_vm_lines
         .into_iter()
-        .scan(initial_function, |function_name, command| {
-            match command {
-                Command::Function {
-                    ref fn_name,
-                    num_arguments: _,
-                } => {
-                    *function_name = Some(fn_name.clone());
-                }
-                // Other commands don't change the calling function context.
-                _ => (),
-            };
+        .scan(
+            (initial_function, nth_call_offset),
+            |(function_name, nth_call), command| {
+                let nth_call_ctx = (*nth_call).clone();
 
-            let line = to_assembly(command, &program_name, function_name, nth_call_offset);
+                match command {
+                    Command::Function {
+                        ref fn_name,
+                        num_arguments: _,
+                    } => {
+                        *function_name = Some(fn_name.clone());
+                    }
+                    Command::Call {
+                        callee: _,
+                        num_arguments: _,
+                    } => {
+                        // Increment the next nth call.
+                        *nth_call += 1;
+                    }
+                    // Other commands don't change the calling function context.
+                    _ => (),
+                };
 
-            Some(line)
-        })
+                let line = to_assembly(command, &program_name, function_name, nth_call_ctx);
+
+                Some(line)
+            },
+        )
         .flatten()
         .collect();
 
@@ -1450,7 +1462,7 @@ call myfn 0"
                 ),
             },
             TestCase {
-                // Include a function definition to specify the return address label.
+                // Different names and 1 argument in call.
                 command: "function my_currentfn 0
 call anotherfn 1"
                     .to_string(),
@@ -1460,6 +1472,22 @@ call anotherfn 1"
 {}",
                     fn_declaration("MyTest.my_currentfn"),
                     fn_call("MyTest.my_currentfn", "MyTest.anotherfn", 0, 1)
+                ),
+            },
+            TestCase {
+                // Multiple calls.
+                command: "function thisfn 0
+call myfn 0
+call myfn 0"
+                    .to_string(),
+                program_name: "Test".to_string(),
+                expected_assembly: format!(
+                    "{}
+{}
+{}",
+                    fn_declaration("Test.thisfn"),
+                    fn_call("Test.thisfn", "Test.myfn", 0, 0),
+                    fn_call("Test.thisfn", "Test.myfn", 1, 0)
                 ),
             },
         ];
