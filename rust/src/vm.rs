@@ -27,6 +27,7 @@ pub fn translate(program_name: String, input: &str) -> Result<String, TranslateE
         .collect::<Result<Vec<Command>, TranslateError>>()?;
 
     let initial_function = None;
+    let nth_call_offset = 0;
 
     let assembly_lines: Vec<assemble::AssemblyLine> = parsed_vm_lines
         .into_iter()
@@ -42,7 +43,7 @@ pub fn translate(program_name: String, input: &str) -> Result<String, TranslateE
                 _ => (),
             };
 
-            let line = to_assembly(command, &program_name, function_name);
+            let line = to_assembly(command, &program_name, function_name, nth_call_offset);
 
             Some(line)
         })
@@ -218,6 +219,7 @@ fn to_assembly(
     command: Command,
     program_name: &str,
     caller: &Option<String>,
+    nth_call_offset: u16,
 ) -> Vec<assemble::AssemblyLine> {
     match command {
         Command::Push(memory_segment) => push(memory_segment, program_name),
@@ -247,6 +249,7 @@ fn to_assembly(
                 .clone()
                 .expect("function call should reside in a function scope"),
             callee,
+            nth_call_offset,
             num_arguments,
         ),
     }
@@ -275,11 +278,10 @@ fn call(
     program_name: &str,
     caller: String,
     callee: String,
+    nth_call_offset: u16,
     num_arguments: u16,
 ) -> Vec<assemble::AssemblyLine> {
-    let hardcoded_arg_num = 0; // TODO: motivate with test.
-                               //
-    let return_address = format!("{}.{}$ret{}", program_name, caller, hardcoded_arg_num);
+    let return_address = format!("{}.{}$ret{}", program_name, caller, nth_call_offset);
 
     // Save return address on stack.
     let save_return_address = push_address_to_stack(return_address.clone());
@@ -321,6 +323,9 @@ fn call(
 }
 
 fn set_arg_for_call(num_arguments: u16) -> Vec<assemble::AssemblyLine> {
+    let fixed_sp_decrement = 5;
+    let sp_decrement = fixed_sp_decrement + num_arguments;
+
     vec![
         // @SP
         assemble::AssemblyLine::Instruction(assemble::Instruction::A(
@@ -332,9 +337,9 @@ fn set_arg_for_call(num_arguments: u16) -> Vec<assemble::AssemblyLine> {
             destination: assemble::Destination::D,
             jump: assemble::Jump::Null,
         })),
-        // @5
+        // @5 + number of arguments.
         assemble::AssemblyLine::Instruction(assemble::Instruction::A(
-            assemble::AInstruction::Address(5),
+            assemble::AInstruction::Address(sp_decrement),
         )),
         // D=D-A
         assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
@@ -1430,19 +1435,34 @@ M=M+1"
             expected_assembly: String,
         }
 
-        let test_cases = vec![TestCase {
-            // Include a function definition to specify the return address label.
-            command: "function currentfn 0
+        let test_cases = vec![
+            TestCase {
+                // Include a function definition to specify the return address label.
+                command: "function currentfn 0
 call myfn 0"
-                .to_string(),
-            program_name: "Test".to_string(),
-            expected_assembly: format!(
-                "{}
+                    .to_string(),
+                program_name: "Test".to_string(),
+                expected_assembly: format!(
+                    "{}
 {}",
-                fn_declaration("Test.currentfn", 0),
-                fn_call(0)
-            ),
-        }];
+                    fn_declaration("Test.currentfn"),
+                    fn_call("Test.currentfn", "Test.myfn", 0, 0)
+                ),
+            },
+            TestCase {
+                // Include a function definition to specify the return address label.
+                command: "function my_currentfn 0
+call anotherfn 1"
+                    .to_string(),
+                program_name: "MyTest".to_string(),
+                expected_assembly: format!(
+                    "{}
+{}",
+                    fn_declaration("MyTest.my_currentfn"),
+                    fn_call("MyTest.my_currentfn", "MyTest.anotherfn", 0, 1)
+                ),
+            },
+        ];
 
         for test_case in test_cases {
             let assembly = translate(test_case.program_name, &test_case.command)
@@ -1456,19 +1476,16 @@ call myfn 0"
         }
     }
 
-    fn fn_declaration(name: &str, arg_offset: u16) -> String {
-        format!(
-            // save return address on stack.
-            "({})
-@{}$ret{}",
-            name, name, arg_offset
-        )
+    fn fn_declaration(name: &str) -> String {
+        format!("({})", name)
     }
 
-    fn fn_call(arg_offset: u16) -> String {
+    fn fn_call(caller: &str, callee: &str, nth_call_in_scope: u16, num_args: u16) -> String {
         let fixed_sp_decrement = 5;
-        let decrement = fixed_sp_decrement - arg_offset;
+        let decrement = fixed_sp_decrement + num_args;
+
         format!(
+            // save return address on stack.
             // Save LCL on stack.
             // Save ARG on stack.
             // Save THIS on stack.
@@ -1477,7 +1494,8 @@ call myfn 0"
             // LCL = SP
             // goto f
             // (return address)
-            "D=A
+            "@{}$ret{}
+D=A
 @SP
 A=M
 M=D
@@ -1522,10 +1540,10 @@ M=D
 D=M
 @LCL
 M=D
-@Test.myfn
+@{}
 0;JMP
-(Test.currentfn$ret{})",
-            decrement, arg_offset
+({}$ret{})",
+            caller, nth_call_in_scope, decrement, callee, caller, nth_call_in_scope
         )
     }
 
