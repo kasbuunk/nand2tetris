@@ -1436,7 +1436,39 @@ M=M+1"
 call myfn 0"
                 .to_string(),
             program_name: "Test".to_string(),
-            // Save return address on stack.
+            expected_assembly: format!(
+                "{}
+{}",
+                fn_declaration("Test.currentfn", 0),
+                fn_call(0)
+            ),
+        }];
+
+        for test_case in test_cases {
+            let assembly = translate(test_case.program_name, &test_case.command)
+                .expect(&format!("failed: {}", &test_case.command));
+
+            assert_eq!(
+                test_case.expected_assembly, assembly,
+                "{} failed: expected {}, got {}",
+                test_case.command, test_case.expected_assembly, assembly,
+            );
+        }
+    }
+
+    fn fn_declaration(name: &str, arg_offset: u16) -> String {
+        format!(
+            // save return address on stack.
+            "({})
+@{}$ret{}",
+            name, name, arg_offset
+        )
+    }
+
+    fn fn_call(arg_offset: u16) -> String {
+        let fixed_sp_decrement = 5;
+        let decrement = fixed_sp_decrement - arg_offset;
+        format!(
             // Save LCL on stack.
             // Save ARG on stack.
             // Save THIS on stack.
@@ -1445,9 +1477,7 @@ call myfn 0"
             // LCL = SP
             // goto f
             // (return address)
-            expected_assembly: "(Test.currentfn)
-@Test.currentfn$ret0
-D=A
+            "D=A
 @SP
 A=M
 M=D
@@ -1483,7 +1513,7 @@ M=D
 M=M+1
 @SP
 D=A
-@5
+@{}
 D=D-A
 @ARG
 A=M
@@ -1494,20 +1524,9 @@ D=M
 M=D
 @Test.myfn
 0;JMP
-(Test.currentfn$ret0)"
-                .to_string(),
-        }];
-
-        for test_case in test_cases {
-            let assembly = translate(test_case.program_name, &test_case.command)
-                .expect(&format!("failed: {}", &test_case.command));
-
-            assert_eq!(
-                test_case.expected_assembly, assembly,
-                "{} failed: expected {}, got {}",
-                test_case.command, test_case.expected_assembly, assembly,
-            );
-        }
+(Test.currentfn$ret{})",
+            decrement, arg_offset
+        )
     }
 
     fn push_dereferenced_symbol_pointer(symbol: &str) -> String {
