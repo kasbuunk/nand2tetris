@@ -16,6 +16,8 @@ static R9: &str = "R9";
 static R10: &str = "R10";
 static R11: &str = "R11";
 static R12: &str = "R12";
+static R13: &str = "R13";
+static R14: &str = "R14";
 
 static SET_TRUE: &str = "SET_TRUE";
 static SET_SP: &str = "SET_SP";
@@ -101,6 +103,7 @@ enum Command {
     IfGoto(assemble::Symbol),
     Function { fn_name: String, num_arguments: u16 },
     Call { callee: String, num_arguments: u16 },
+    Return,
 }
 
 #[derive(Debug)]
@@ -145,6 +148,7 @@ fn parse_line(line: &str) -> Result<Command, TranslateError> {
             "eq" => Command::Eq,
             "gt" => Command::Gt,
             "lt" => Command::Lt,
+            "return" => Command::Return,
             _ => {
                 return Err(TranslateError::Invalid);
             }
@@ -264,6 +268,7 @@ fn to_assembly(
             nth_call_offset,
             num_arguments,
         ),
+        Command::Return => fn_return(),
     }
 }
 
@@ -332,6 +337,219 @@ fn call(
         .chain(goto_fn.into_iter())
         .chain(label_return_address.into_iter())
         .collect()
+}
+
+fn fn_return() -> Vec<assemble::AssemblyLine> {
+    let frame = String::from(R13);
+    let return_address_symbol = String::from(R14);
+    let return_address_frame_offset = 5;
+
+    // frame (R13) = LCL
+    // @LCL
+    // D=A
+    // @R13
+    // A=M
+    // M=D
+    let frame_set_lcl = vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(String::from(LCL)),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::A,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(frame.clone()),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::D,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        })),
+    ];
+
+    // retAddr (R14) = *(frame-5)
+    // @5
+    // D=D-A
+    // A=D
+    // D=M
+    // @R14
+    // A=M
+    // M=D
+    let return_address = vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Address(return_address_frame_offset),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::DMinusA,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::D,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(return_address_symbol.clone()),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::D,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        })),
+    ];
+
+    // *ARG = pop()
+    // @SP
+    // M=M-1
+    // A=M
+    // D=M
+    // @ARG
+    // M=D
+    let arg_pop = vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(String::from(SP)),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::MMinusOne,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(String::from(ARG)),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::D,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        })),
+    ];
+
+    // SP = ARG+1
+    // D=A+1
+    // @SP
+    // M=D
+    let reposition_sp = vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::APlusOne,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(String::from(SP)),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::D,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        })),
+    ];
+
+    let reposition_that = reposition_segment(&frame, THAT, 1);
+    let reposition_this = reposition_segment(&frame, THIS, 2);
+    let reposition_arg = reposition_segment(&frame, ARG, 3);
+    let reposition_lcl = reposition_segment(&frame, LCL, 4);
+
+    // goto retAddr
+    // @R14
+    // 0;JMP
+    let goto_return_address = vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(return_address_symbol),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::Zero,
+            destination: assemble::Destination::Null,
+            jump: assemble::Jump::JMP,
+        })),
+    ];
+
+    frame_set_lcl
+        .into_iter()
+        .chain(return_address.into_iter())
+        .chain(arg_pop.into_iter())
+        .chain(reposition_sp.into_iter())
+        .chain(reposition_that.into_iter())
+        .chain(reposition_this.into_iter())
+        .chain(reposition_arg.into_iter())
+        .chain(reposition_lcl.into_iter())
+        .chain(goto_return_address.into_iter())
+        .collect()
+}
+
+fn reposition_segment(frame: &str, segment: &str, offset: u16) -> Vec<assemble::AssemblyLine> {
+    // segment = *(frame - offset)
+    // @frame
+    // D=A
+    // @offset
+    // A=D-A
+    // A=M
+    // D=M
+    // @segment
+    // M=D
+    vec![
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(String::from(frame)),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::A,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Address(offset),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::DMinusA,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::A,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::M,
+            destination: assemble::Destination::D,
+            jump: assemble::Jump::Null,
+        })),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::A(
+            assemble::AInstruction::Symbol(String::from(segment)),
+        )),
+        assemble::AssemblyLine::Instruction(assemble::Instruction::C(assemble::CInstruction {
+            computation: assemble::Computation::D,
+            destination: assemble::Destination::M,
+            jump: assemble::Jump::Null,
+        })),
+    ]
 }
 
 fn set_arg_for_call(num_arguments: u16) -> Vec<assemble::AssemblyLine> {
@@ -1490,6 +1708,19 @@ call myfn 0"
                     fn_call("Test.thisfn", "Test.myfn", 1, 0)
                 ),
             },
+            TestCase {
+                // Declare and return.
+                command: "function ireturn 0
+return"
+                    .to_string(),
+                program_name: "Test".to_string(),
+                expected_assembly: format!(
+                    "{}
+{}",
+                    fn_declaration("Test.ireturn"),
+                    fn_return()
+                ),
+            },
         ];
 
         for test_case in test_cases {
@@ -1506,6 +1737,65 @@ call myfn 0"
 
     fn fn_declaration(name: &str) -> String {
         format!("({})", name)
+    }
+
+    fn fn_return() -> String {
+        "@LCL
+D=A
+@R13
+A=M
+M=D
+@5
+D=D-A
+A=D
+D=M
+@R14
+A=M
+M=D
+@SP
+M=M-1
+A=M
+D=M
+@ARG
+M=D
+D=A+1
+@SP
+M=D
+@R13
+D=A
+@1
+A=D-A
+A=M
+D=M
+@THAT
+M=D
+@R13
+D=A
+@2
+A=D-A
+A=M
+D=M
+@THIS
+M=D
+@R13
+D=A
+@3
+A=D-A
+A=M
+D=M
+@ARG
+M=D
+@R13
+D=A
+@4
+A=D-A
+A=M
+D=M
+@LCL
+M=D
+@R14
+0;JMP"
+            .to_string()
     }
 
     fn fn_call(caller: &str, callee: &str, nth_call_in_scope: u16, num_args: u16) -> String {
