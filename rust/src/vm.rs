@@ -22,6 +22,38 @@ static R14: &str = "R14";
 static SET_TRUE: &str = "SET_TRUE";
 static SET_SP: &str = "SET_SP";
 
+#[derive(Clone)]
+struct VMFile {
+    name: String,
+    content: String,
+}
+
+fn translate_programs(programs: Vec<VMFile>) -> Result<String, TranslateError> {
+    let sys_init_file = sys_init();
+
+    let compiled_programs: Vec<String> = programs
+        .into_iter()
+        .map(|program| translate(program.name, &program.content))
+        .collect::<Result<Vec<String>, TranslateError>>()?;
+
+    let code = std::iter::once(translate(sys_init_file.name, &sys_init_file.content)?)
+        .chain(compiled_programs.into_iter())
+        .collect::<Vec<String>>()
+        .join("\n");
+
+    Ok(code)
+}
+
+fn sys_init() -> VMFile {
+    VMFile {
+        name: "Sys".to_string(),
+        content: "function init 0
+call Main.main 0
+return"
+            .to_string(),
+    }
+}
+
 pub fn translate(program_name: String, input: &str) -> Result<String, TranslateError> {
     let parsed_vm_lines: Vec<Command> = input
         .lines()
@@ -1733,6 +1765,48 @@ return"
                 test_case.command, test_case.expected_assembly, assembly,
             );
         }
+    }
+
+    #[test]
+    fn test_link_files() -> Result<(), Box<dyn error::Error>> {
+        let sys = VMFile {
+            name: "Sys".to_string(),
+            content: "function init 0
+call Main.main 0
+return"
+                .to_string(),
+        };
+
+        let program1 = VMFile {
+            name: "Main".to_string(),
+            content: "function main 0
+call Domain.run 0
+return"
+                .to_string(),
+        };
+        let program2 = VMFile {
+            name: "Domain".to_string(),
+            content: "function domain 0
+return"
+                .to_string(),
+        };
+
+        let programs = vec![program1.clone(), program2.clone()];
+
+        let expected_output = format!(
+            "{}
+{}
+{}",
+            translate(sys.name, &sys.content)?,
+            translate(program1.name, &program1.content)?,
+            translate(program2.name, &program2.content)?,
+        );
+
+        let output = translate_programs(programs)?;
+
+        assert_eq!(expected_output, output);
+
+        Ok(())
     }
 
     fn fn_declaration(name: &str) -> String {
